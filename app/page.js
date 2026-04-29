@@ -100,8 +100,13 @@ function Dashboard({ user, onLogout }) {
 
       toast.success(`"${file.name}" uploaded!`);
       setUploadProgress(100);
-      setUploading(false);
-      uploadLock.current = false;
+      setStatusLog(prev => [...prev, { message: 'File saved! May take ~5 min to appear after page refresh.', type: 'success' }]);
+
+      // Keep progress visible for a moment
+      setTimeout(() => {
+        setUploading(false);
+        uploadLock.current = false;
+      }, 3000);
 
       fetchFiles(1, true).catch(() => {});
     } catch (err) {
@@ -172,7 +177,7 @@ function Dashboard({ user, onLogout }) {
         <div className="upload-icon"><Upload size={40} /></div>
         <p className="upload-title">{uploading ? 'Uploading...' : 'Drop files here'}</p>
         <p className="upload-subtitle">{!uploading && 'or click to browse'}</p>
-        <p className="upload-hint">≤50MB → Telegram | &gt;50MB → Discord (4MB chunks)</p>
+        <p className="upload-hint">Files saved to Discord + Telegram backup (≤50MB)</p>
       </div>
 
       {/* Progress */}
@@ -340,6 +345,26 @@ function Dashboard({ user, onLogout }) {
           </div>
         </div>
       )}
+
+      {/* Sync Info */}
+      {files.length > 0 && (
+        <div className="sync-info">
+          <p>💡 Files sync every ~5 minutes. New uploads appear instantly but may take a moment to show after page refresh.</p>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="footer-left">
+          <span>CloudVault — Discord & Telegram Storage</span>
+        </div>
+        <div className="footer-donate">
+          <span>Support this project</span>
+          <a href="https://saweria.co/aldirahmanhh" target="_blank" rel="noopener" className="btn donate-btn saweria">🇮🇩 Saweria</a>
+          <a href="https://ko-fi.com/aldirahmanhh" target="_blank" rel="noopener" className="btn donate-btn kofi">☕ Ko-fi</a>
+          <a href="https://trakteer.id/aldirahmanhh" target="_blank" rel="noopener" className="btn donate-btn trakteer">🎁 Trakteer</a>
+        </div>
+      </footer>
     </div>
   );
 }

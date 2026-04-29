@@ -203,6 +203,36 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .share-file-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); }
 .share-results { padding: 8px 0; }
 
+/* ===== SYNC INFO ===== */
+.sync-info {
+  margin-top: 24px; padding: 12px 16px;
+  background: var(--warning-bg); border: 2px solid var(--warning);
+  border-radius: var(--radius); font-size: 12px; color: var(--text-secondary);
+  text-align: center; box-shadow: var(--shadow-sm);
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  margin-top: 40px; padding: 20px 0; border-top: 3px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+}
+.footer-left { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.footer-donate { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.footer-donate > span { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.donate-btn { font-size: 11px !important; padding: 6px 12px !important; }
+.donate-btn.saweria { background: #f59e0b; color: white; border-color: #d97706; }
+.donate-btn.saweria:hover { background: #d97706; }
+.donate-btn.kofi { background: #ff5e5b; color: white; border-color: #e04542; }
+.donate-btn.kofi:hover { background: #e04542; }
+.donate-btn.trakteer { background: #be1e2d; color: white; border-color: #9a1824; }
+.donate-btn.trakteer:hover { background: #9a1824; }
+
+@media (max-width: 768px) {
+  .footer { flex-direction: column; text-align: center; }
+  .footer-donate { justify-content: center; }
+}
+
 /* ===== SPINNER ===== */
 .spinner { width: 24px; height: 24px; border: 3px solid #e5e5e5; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
