@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "app/api/upload/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/download/[id]/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/webhook/telegram/route.js": {
+      "maxDuration": 60
+    }
+  }
+}
