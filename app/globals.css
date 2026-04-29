@@ -89,6 +89,7 @@ body {
   transition: all 0.2s; display: flex; align-items: center;
 }
 .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+.sync-badge { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--neon-cyan); padding: 4px 10px; background: rgba(6,182,212,0.1); border-radius: 20px; border: 1px solid rgba(6,182,212,0.2); }
 
 /* ===== UPLOAD ZONE ===== */
 .upload-zone {

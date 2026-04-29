@@ -51,6 +51,7 @@ function Dashboard({ user, onLogout }) {
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('gallery'); // gallery | list
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false); // background sync indicator
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -62,9 +63,9 @@ function Dashboard({ user, onLogout }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchFiles = useCallback(async (page = 1) => {
+  const fetchFiles = useCallback(async (page = 1, background = false) => {
     try {
-      setLoading(true);
+      if (background) { setSyncing(true); } else { setLoading(true); }
       const data = await getFiles(page, 20, search);
       let filtered = data.files || [];
       if (filter !== 'all') filtered = filtered.filter(f => f.storageType === filter);
@@ -75,6 +76,7 @@ function Dashboard({ user, onLogout }) {
       console.error('Fetch error:', err);
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   }, [search, filter]);
 
@@ -90,16 +92,22 @@ function Dashboard({ user, onLogout }) {
     setUploading(true); setUploadProgress(0); setUploadFileName(file.name); setStatusLog([]);
 
     try {
-      await uploadFile(file, (pct, msg) => {
+      const result = await uploadFile(file, (pct, msg) => {
         setUploadProgress(pct);
         if (msg) setStatusLog(prev => [...prev, { message: msg, type: pct >= 100 ? 'success' : 'info' }]);
       });
+
+      // Add file to list immediately (optimistic UI)
+      setFiles(prev => [result, ...prev]);
+      setStats(prev => ({ ...prev, totalFiles: prev.totalFiles + 1, totalSize: prev.totalSize + file.size }));
+
       toast.success(`"${file.name}" uploaded!`);
       setUploadProgress(100);
-      // Instant refresh
-      await fetchFiles(1);
       setUploading(false);
       uploadLock.current = false;
+
+      // Background sync with server (don't block UI)
+      fetchFiles(1, true).catch(() => {});
     } catch (err) {
       setStatusLog(prev => [...prev, { message: err.message, type: 'error' }]);
       toast.error(err.message);
@@ -152,6 +160,7 @@ function Dashboard({ user, onLogout }) {
             <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">Files</div></div>
             <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">Used</div></div>
           </div>
+          {syncing && <div className="sync-badge" title="Syncing with server..."><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Syncing</div>}
           <div className="user-badge"><User size={14} /> {user.username}</div>
           <button className="btn-logout" onClick={onLogout} title="Logout"><LogOut size={16} /></button>
         </div>
