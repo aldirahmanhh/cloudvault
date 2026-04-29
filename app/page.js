@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { uploadFile, getFiles, deleteFile, getDownloadUrl, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
 import AuthForm from './components/AuthForm';
+import InstallBanner from './components/InstallBanner';
 
 const iconMap = { image: Image, video: Film, audio: Music, document: FileText, archive: Archive, code: Code, default: File };
 
@@ -136,6 +137,7 @@ function Dashboard({ user, onLogout }) {
 
   return (
     <div className="app">
+      <InstallBanner />
       {/* Header */}
       <header className="header">
         <div className="header-brand">

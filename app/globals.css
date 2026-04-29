@@ -328,3 +328,26 @@ body {
   border: 1px solid var(--border); border-radius: var(--radius-sm);
 }
 .share-results { padding: 8px 0; }
+
+/* ===== INSTALL BANNER ===== */
+.install-banner {
+  background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(6,182,212,0.1));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  animation: slideDown 0.3s ease;
+}
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.install-banner-content { display: flex; align-items: center; gap: 12px; }
+.install-banner-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--accent); color: white;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.install-banner-text { flex: 1; min-width: 0; }
+.install-banner-text strong { font-family: var(--font-display); font-size: 14px; display: block; }
+.install-banner-text p { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.install-banner-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.install-btn { padding: 8px 16px !important; font-size: 12px !important; }
+.install-dismiss { color: var(--text-muted); }

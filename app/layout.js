@@ -1,5 +1,6 @@
 import './globals.css';
 import ToastProvider from './components/ToastProvider';
+import ServiceWorker from './components/ServiceWorker';
 
 export const metadata = {
   title: 'CloudVault - Discord & Telegram Storage',
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ToastProvider />
+        <ServiceWorker />
         {children}
       </body>
     </html>
