@@ -33,7 +33,7 @@ export async function GET(request) {
         headers: {
           'Accept': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
-          'key': `Bearer ${apiKey}`,
+          'key': apiKey,
         },
       });
 
@@ -48,15 +48,13 @@ export async function GET(request) {
       if (items.length === 0) break;
 
       for (const s of items) {
-        if (s.status !== 'success') continue;
         supporters.push({
-          name: s.creator_name || 'Anonymous',
+          name: s.supporter_name || 'Anonymous',
           amount: Number(s.amount) || 0,
           quantity: Number(s.quantity) || 1,
           unit: s.unit_name || '',
           message: s.support_message || '',
           date: s.updated_at || '',
-          method: s.payment_method || '',
         });
       }
 
