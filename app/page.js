@@ -94,7 +94,11 @@ function Dashboard({ user, onLogout }) {
         if (msg) setStatusLog(prev => [...prev, { message: msg, type: pct >= 100 ? 'success' : 'info' }]);
       });
       toast.success(`"${file.name}" uploaded!`);
-      setTimeout(() => { setUploading(false); uploadLock.current = false; fetchFiles(1); }, 1500);
+      setUploadProgress(100);
+      // Instant refresh
+      await fetchFiles(1);
+      setUploading(false);
+      uploadLock.current = false;
     } catch (err) {
       setStatusLog(prev => [...prev, { message: err.message, type: 'error' }]);
       toast.error(err.message);

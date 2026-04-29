@@ -20,11 +20,12 @@ async function ensurePolling() {
 // GET /api/files — list user's files
 export async function GET(request) {
   try {
-    await ensurePolling();
+    ensurePolling(); // Don't await — fire and forget
 
     const user = await getUserFromRequest(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Rebuild index — blocks only on cold start (empty cache)
     await rebuildIndex();
 
     const { searchParams } = new URL(request.url);
