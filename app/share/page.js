@@ -126,7 +126,7 @@ export default function SharePage() {
       <div className="share-card">
         <div className="share-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="header-logo" style={{ width: 36, height: 36, fontSize: 18 }}>⚡</div>
+            <div className="header-logo" style={{ width: 36, height: 36 }}><img src="/logo.png" alt="CloudVault" width={24} height={24} /></div>
             <div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>Quick Upload</h2>
               <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Hi, {user.username}</p>

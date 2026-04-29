@@ -33,7 +33,7 @@ export default function AuthForm({ onLogin }) {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-logo">⚡</div>
+        <div className="auth-logo"><img src="/logo.png" alt="CloudVault" width={32} height={32} /></div>
         <h1 className="auth-title">CloudVault</h1>
         <p className="auth-subtitle">Your files. Discord & Telegram powered.</p>
 

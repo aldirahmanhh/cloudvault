@@ -151,7 +151,7 @@ function Dashboard({ user, onLogout }) {
       {/* Header */}
       <header className="header">
         <div className="header-brand">
-          <div className="header-logo">⚡</div>
+          <div className="header-logo"><img src="/logo.png" alt="CloudVault" width={28} height={28} /></div>
           <div>
             <h1 className="header-title">CloudVault</h1>
             <p className="header-subtitle">Discord & Telegram Storage</p>
