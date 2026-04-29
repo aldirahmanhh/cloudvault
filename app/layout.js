@@ -1,5 +1,5 @@
-import { Toaster } from 'react-hot-toast';
 import './globals.css';
+import ToastProvider from './components/ToastProvider';
 
 export const metadata = {
   title: 'CloudVault - Discord & Telegram Storage',
@@ -10,9 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <Toaster position="top-right" toastOptions={{
-          style: { background: '#1e1e2e', color: '#cdd6f4', border: '1px solid #313244' },
-        }} />
+        <ToastProvider />
         {children}
       </body>
     </html>
