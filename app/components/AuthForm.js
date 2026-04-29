@@ -14,7 +14,6 @@ export default function AuthForm({ onLogin }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await fetch(mode === 'login' ? '/api/auth/login' : '/api/auth/register', {
         method: 'POST',
@@ -34,9 +33,9 @@ export default function AuthForm({ onLogin }) {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-logo">☁️</div>
+        <div className="auth-logo">⚡</div>
         <h1 className="auth-title">CloudVault</h1>
-        <p className="auth-subtitle">Game your storage. Discord & Telegram powered.</p>
+        <p className="auth-subtitle">Your files. Discord & Telegram powered.</p>
 
         <div className="auth-tabs">
           <button className={`auth-tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); }}>

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
   Search, HardDrive, Upload, Download, Trash2, X, ChevronLeft, ChevronRight,
   Image, Film, Music, FileText, Archive, Code, File, AlertTriangle,
-  CheckCircle2, Loader2, LogOut, User, Grid, List, Play,
+  CheckCircle2, Loader2, LogOut, User, Grid, List, Play, RefreshCw,
 } from 'lucide-react';
 import { uploadFile, getFiles, deleteFile, getDownloadUrl, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
 import AuthForm from './components/AuthForm';
@@ -13,7 +13,6 @@ import InstallBanner from './components/InstallBanner';
 
 const iconMap = { image: Image, video: Film, audio: Music, document: FileText, archive: Archive, code: Code, default: File };
 
-// ===== AUTH WRAPPER =====
 export default function Home() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -28,7 +27,7 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#0a0a12' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#e8e4dc' }}>
         <div className="spinner" />
       </div>
     );
@@ -42,16 +41,15 @@ export default function Home() {
   }} />;
 }
 
-// ===== DASHBOARD =====
 function Dashboard({ user, onLogout }) {
   const [files, setFiles] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [stats, setStats] = useState({ totalFiles: 0, totalSize: 0 });
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('gallery'); // gallery | list
+  const [viewMode, setViewMode] = useState('gallery');
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false); // background sync indicator
+  const [syncing, setSyncing] = useState(false);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -65,7 +63,7 @@ function Dashboard({ user, onLogout }) {
 
   const fetchFiles = useCallback(async (page = 1, background = false) => {
     try {
-      if (background) { setSyncing(true); } else { setLoading(true); }
+      if (background) setSyncing(true); else setLoading(true);
       const data = await getFiles(page, 20, search);
       let filtered = data.files || [];
       if (filter !== 'all') filtered = filtered.filter(f => f.storageType === filter);
@@ -97,7 +95,6 @@ function Dashboard({ user, onLogout }) {
         if (msg) setStatusLog(prev => [...prev, { message: msg, type: pct >= 100 ? 'success' : 'info' }]);
       });
 
-      // Add file to list immediately (optimistic UI)
       setFiles(prev => [result, ...prev]);
       setStats(prev => ({ ...prev, totalFiles: prev.totalFiles + 1, totalSize: prev.totalSize + file.size }));
 
@@ -106,7 +103,6 @@ function Dashboard({ user, onLogout }) {
       setUploading(false);
       uploadLock.current = false;
 
-      // Background sync with server (don't block UI)
       fetchFiles(1, true).catch(() => {});
     } catch (err) {
       setStatusLog(prev => [...prev, { message: err.message, type: 'error' }]);
@@ -134,33 +130,31 @@ function Dashboard({ user, onLogout }) {
     setDeleting(true);
     try {
       await deleteFile(deleteTarget.id);
+      setFiles(prev => prev.filter(f => f.id !== deleteTarget.id));
+      setStats(prev => ({ ...prev, totalFiles: prev.totalFiles - 1, totalSize: prev.totalSize - (deleteTarget.size || 0) }));
       toast.success('Deleted!');
       setDeleteTarget(null);
-      fetchFiles(pagination.page);
     } catch { toast.error('Delete failed'); }
     finally { setDeleting(false); }
   };
 
-  const isMedia = (mime) => mime && (mime.startsWith('image/') || mime.startsWith('video/'));
-
   return (
     <div className="app">
       <InstallBanner />
+
       {/* Header */}
       <header className="header">
         <div className="header-brand">
           <div className="header-logo">⚡</div>
           <div>
-            <h1 className="header-title">CLOUDVAULT</h1>
+            <h1 className="header-title">CloudVault</h1>
             <p className="header-subtitle">Discord & Telegram Storage</p>
           </div>
         </div>
         <div className="header-right">
-          <div className="header-stats">
-            <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">Files</div></div>
-            <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">Used</div></div>
-          </div>
-          {syncing && <div className="sync-badge" title="Syncing with server..."><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Syncing</div>}
+          <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">Files</div></div>
+          <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">Used</div></div>
+          {syncing && <div className="sync-badge"><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Syncing</div>}
           <div className="user-badge"><User size={14} /> {user.username}</div>
           <button className="btn-logout" onClick={onLogout} title="Logout"><LogOut size={16} /></button>
         </div>
@@ -176,12 +170,12 @@ function Dashboard({ user, onLogout }) {
       >
         <input id="file-input" type="file" hidden onChange={handleUpload} />
         <div className="upload-icon"><Upload size={40} /></div>
-        <p className="upload-title">{uploading ? 'UPLOADING...' : 'DROP FILES HERE'}</p>
+        <p className="upload-title">{uploading ? 'Uploading...' : 'Drop files here'}</p>
         <p className="upload-subtitle">{!uploading && 'or click to browse'}</p>
-        <p className="upload-hint">≤50MB → Telegram | &gt;50MB → Discord (auto-split)</p>
+        <p className="upload-hint">≤50MB → Telegram | &gt;50MB → Discord (4MB chunks)</p>
       </div>
 
-      {/* Upload Progress */}
+      {/* Progress */}
       {uploading && (
         <div className="upload-progress">
           <div className="progress-header">
@@ -189,12 +183,12 @@ function Dashboard({ user, onLogout }) {
               {uploadProgress >= 100 ? <CheckCircle2 size={14} style={{ color: 'var(--success)' }} /> : <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
               <span style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uploadFileName}</span>
             </div>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{uploadProgress}%</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{uploadProgress}%</span>
           </div>
           <div className="progress-bar"><div className="progress-fill" style={{ width: `${uploadProgress}%`, background: uploadProgress >= 100 ? 'var(--success)' : undefined }} /></div>
           {statusLog.length > 0 && (
             <div className="status-log">
-              {statusLog.map((l, i) => <div key={i} className={`status-log-item ${l.type}`}>{l.type === 'success' ? '✅' : l.type === 'error' ? '❌' : '⏳'} {l.message}</div>)}
+              {statusLog.map((l, i) => <div key={i} className={`status-log-item ${l.type}`}>{l.type === 'success' ? '✅' : l.type === 'error' ? '❌' : '→'} {l.message}</div>)}
             </div>
           )}
         </div>
@@ -207,10 +201,10 @@ function Dashboard({ user, onLogout }) {
           <input placeholder="Search files..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="view-toggle">
-          <button className={`view-btn ${viewMode === 'gallery' ? 'active' : ''}`} onClick={() => setViewMode('gallery')} title="Gallery"><Grid size={16} /></button>
-          <button className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} title="List"><List size={16} /></button>
+          <button className={`view-btn ${viewMode === 'gallery' ? 'active' : ''}`} onClick={() => setViewMode('gallery')}><Grid size={16} /></button>
+          <button className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}><List size={16} /></button>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
           {['all', 'discord', 'telegram'].map(f => (
             <button key={f} className={`filter-btn ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
               {f === 'all' ? <><HardDrive size={12} /> All</> : f === 'discord' ? '🎮 Discord' : '✈️ Telegram'}
@@ -221,52 +215,39 @@ function Dashboard({ user, onLogout }) {
 
       {/* Files */}
       {loading ? (
-        <div className="empty-state"><div className="spinner" style={{ margin: '0 auto 16px' }} /><p>Loading...</p></div>
+        <div className="empty-state"><div className="spinner" style={{ margin: '0 auto 16px' }} /><p style={{ color: 'var(--text-muted)' }}>Loading files...</p></div>
       ) : files.length === 0 ? (
         <div className="empty-state">
           <File size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
           <h3 className="empty-state-title">No files yet</h3>
-          <p>Upload your first file to get started!</p>
+          <p style={{ color: 'var(--text-muted)' }}>Upload your first file!</p>
         </div>
       ) : viewMode === 'gallery' ? (
-        /* ===== GALLERY VIEW ===== */
         <div className="file-gallery">
           {files.map(file => {
             const cat = getFileCategory(file.mimeType);
             const Icon = iconMap[cat] || File;
-            const isImg = cat === 'image';
-            const isVid = cat === 'video';
-
             return (
               <div key={file.id} className="gallery-item" onClick={() => setPreviewFile(file)}>
                 <div className="gallery-thumb">
-                  {isImg ? (
+                  {cat === 'image' ? (
                     <img src={getDownloadUrl(file.id)} alt={file.name} loading="lazy" />
-                  ) : isVid ? (
-                    <>
-                      <video src={getDownloadUrl(file.id)} preload="metadata" muted />
-                      <div className="gallery-play"><Play size={18} /></div>
-                    </>
+                  ) : cat === 'video' ? (
+                    <><video src={getDownloadUrl(file.id)} preload="metadata" muted /><div className="gallery-play"><Play size={18} /></div></>
                   ) : (
                     <div className="gallery-thumb-icon"><Icon size={40} /></div>
                   )}
                 </div>
-                <span className={`gallery-badge storage-badge ${file.storageType}`}>
-                  {file.storageType === 'discord' ? '🎮' : '✈️'}
-                </span>
+                <span className={`gallery-badge storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'}</span>
                 <div className="gallery-info">
                   <div className="gallery-name" title={file.name}>{file.name}</div>
-                  <div className="gallery-meta">
-                    <span>{formatFileSize(file.size)}</span>
-                    <span>{timeAgo(file.createdAt)}</span>
-                  </div>
+                  <div className="gallery-meta"><span>{formatFileSize(file.size)}</span><span>{timeAgo(file.createdAt)}</span></div>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        /* ===== LIST VIEW ===== */
         <div className="file-list">
           {files.map(file => {
             const cat = getFileCategory(file.mimeType);
@@ -296,12 +277,12 @@ function Dashboard({ user, onLogout }) {
       {pagination.totalPages > 1 && (
         <div className="pagination">
           <button disabled={pagination.page <= 1} onClick={() => fetchFiles(pagination.page - 1)}><ChevronLeft size={14} /></button>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Page {pagination.page}/{pagination.totalPages}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Page {pagination.page}/{pagination.totalPages}</span>
           <button disabled={pagination.page >= pagination.totalPages} onClick={() => fetchFiles(pagination.page + 1)}><ChevronRight size={14} /></button>
         </div>
       )}
 
-      {/* Preview Modal */}
+      {/* Preview */}
       {previewFile && (
         <div className="modal-overlay" onClick={() => setPreviewFile(null)}>
           <div className="preview-modal" onClick={e => e.stopPropagation()}>
@@ -320,13 +301,13 @@ function Dashboard({ user, onLogout }) {
               {getFileCategory(previewFile.mimeType) === 'image' ? (
                 <img src={getDownloadUrl(previewFile.id)} alt={previewFile.name} className="preview-image" />
               ) : getFileCategory(previewFile.mimeType) === 'video' ? (
-                <video controls className="preview-video" preload="metadata"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /></video>
+                <video controls className="preview-video"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /></video>
               ) : getFileCategory(previewFile.mimeType) === 'audio' ? (
                 <audio controls className="preview-audio"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /></audio>
               ) : (
                 <div className="preview-file-info">
                   <File size={64} style={{ color: 'var(--text-muted)' }} />
-                  <div className="preview-file-type">{previewFile.mimeType || 'Unknown File'}</div>
+                  <div className="preview-file-type">{previewFile.mimeType || 'Unknown'}</div>
                   <div className="preview-detail-row"><span className="preview-detail-label">Name</span><span className="preview-detail-value">{previewFile.name}</span></div>
                   <div className="preview-detail-row"><span className="preview-detail-label">Size</span><span className="preview-detail-value">{formatFileSize(previewFile.size)}</span></div>
                   <div className="preview-detail-row"><span className="preview-detail-label">Type</span><span className="preview-detail-value">{previewFile.mimeType}</span></div>
@@ -334,14 +315,14 @@ function Dashboard({ user, onLogout }) {
               )}
             </div>
             <div className="preview-footer">
-              <button className="btn btn-danger" onClick={(e) => { e.stopPropagation(); setDeleteTarget(previewFile); setPreviewFile(null); }} style={{ marginRight: 8 }}><Trash2 size={14} /> Delete</button>
+              <button className="btn btn-danger" onClick={() => { setDeleteTarget(previewFile); setPreviewFile(null); }}><Trash2 size={14} /> Delete</button>
               <a href={getDownloadUrl(previewFile.id)} className="btn btn-primary" download><Download size={14} /> Download</a>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Modal */}
+      {/* Delete */}
       {deleteTarget && (
         <div className="modal-overlay" onClick={() => !deleting && setDeleteTarget(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -352,7 +333,7 @@ function Dashboard({ user, onLogout }) {
             <p className="modal-text">Delete <strong>&quot;{deleteTarget.name}&quot;</strong>? This cannot be undone.</p>
             <div className="modal-actions">
               <button className="btn" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleDelete} disabled={deleting} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>
+              <button className="btn btn-primary" onClick={handleDelete} disabled={deleting} style={{ background: 'var(--danger)' }}>
                 {deleting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Deleting...</> : 'Delete'}
               </button>
             </div>
