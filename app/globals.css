@@ -151,3 +151,27 @@ body {
   .header-title { font-size: 18px; }
   .file-icon { width: 36px; height: 36px; }
 }
+
+/* Auth */
+.auth-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.auth-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; max-width: 400px; width: 100%; }
+.auth-tabs { display: flex; gap: 4px; margin: 24px 0 20px; background: var(--bg-base); border-radius: var(--radius-sm); padding: 4px; }
+.auth-tab { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+.auth-tab.active { background: var(--accent); color: white; }
+.auth-tab:hover:not(.active) { color: var(--text-primary); }
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+.auth-field label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+.auth-field input { width: 100%; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; outline: none; transition: border-color 0.2s; }
+.auth-field input:focus { border-color: var(--accent); }
+.auth-field input::placeholder { color: var(--text-muted); }
+.auth-error { background: var(--danger-light); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; }
+.auth-submit { width: 100%; padding: 12px; font-size: 15px; font-weight: 600; justify-content: center; margin-top: 4px; }
+
+/* User menu */
+.user-menu { display: flex; align-items: center; gap: 8px; }
+.user-badge { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .user-menu { order: -1; }
+  .user-badge span { display: none; }
+}

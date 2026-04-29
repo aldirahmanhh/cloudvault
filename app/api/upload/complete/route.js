@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { cacheFile } from '@/lib/storage';
+import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// POST /api/upload/complete — signal that all chunks are uploaded
-// Client sends: { fileId, fileName, mimeType, totalSize, storageType, chunks: [...] }
 export async function POST(request) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await request.json();
     const { fileId, fileName, mimeType, totalSize, storageType, chunks } = body;
 
@@ -14,13 +16,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing file data' }, { status: 400 });
     }
 
-    // Cache the complete file
     cacheFile({
       id: fileId,
       name: fileName,
       mimeType,
       size: totalSize,
       storageType,
+      userId: user.userId,
       chunks: chunks.sort((a, b) => a.chunkIndex - b.chunkIndex),
       createdAt: new Date().toISOString(),
     });

@@ -2,12 +2,40 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Search, HardDrive, Upload, UploadCloud, Download, Trash2, X, ChevronLeft, ChevronRight, Image, Film, Music, FileText, Archive, Code, File, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Search, HardDrive, Upload, UploadCloud, Download, Trash2, X, ChevronLeft, ChevronRight, Image, Film, Music, FileText, Archive, Code, File, AlertTriangle, CheckCircle2, Loader2, LogOut, User } from 'lucide-react';
 import { uploadFile, getFiles, deleteFile, getDownloadUrl, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
+import AuthForm from './components/AuthForm';
 
 const iconMap = { image: Image, video: Film, audio: Music, document: FileText, archive: Archive, code: Code, default: File };
 
 export default function Home() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Check if already logged in
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (d.user) setUser(d.user);
+    }).catch(() => {}).finally(() => setAuthLoading(false));
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+  };
+
+  if (authLoading) {
+    return <div className="app" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}><div className="spinner" /></div>;
+  }
+
+  if (!user) {
+    return <AuthForm onLogin={setUser} />;
+  }
+
+  return <Dashboard user={user} onLogout={handleLogout} />;
+}
+
+function Dashboard({ user, onLogout }) {
   const [files, setFiles] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [stats, setStats] = useState({ totalFiles: 0, totalSize: 0 });
@@ -101,9 +129,15 @@ export default function Home() {
             <p className="header-subtitle">Discord & Telegram Storage</p>
           </div>
         </div>
-        <div className="header-stats">
-          <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">Files</div></div>
-          <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">Used</div></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="header-stats">
+            <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">Files</div></div>
+            <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">Used</div></div>
+          </div>
+          <div className="user-menu">
+            <span className="user-badge"><User size={14} /> {user.username}</span>
+            <button className="btn btn-icon" onClick={onLogout} title="Logout"><LogOut size={16} /></button>
+          </div>
         </div>
       </header>
 

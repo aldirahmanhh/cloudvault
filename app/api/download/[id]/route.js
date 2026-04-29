@@ -1,17 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getFileById, downloadFile, rebuildIndex } from '@/lib/storage';
+import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Vercel Pro: up to 300s
+export const maxDuration = 60;
 
-// GET /api/download/:id
 export async function GET(request, { params }) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     await rebuildIndex();
     const file = getFileById(params.id);
 
     if (!file) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
+    if (file.userId && file.userId !== user.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     console.log(`📥 Downloading "${file.name}" from ${file.storageType.toUpperCase()}`);

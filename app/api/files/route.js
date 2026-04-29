@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getFiles, rebuildIndex, getStats } from '@/lib/storage';
+import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,14 @@ async function ensurePolling() {
   }
 }
 
-// GET /api/files — list files
+// GET /api/files — list user's files
 export async function GET(request) {
   try {
     await ensurePolling();
+
+    const user = await getUserFromRequest(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     await rebuildIndex();
 
     const { searchParams } = new URL(request.url);
@@ -27,7 +32,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 20;
     const search = searchParams.get('search') || '';
 
-    const { files, pagination } = getFiles({ page, limit, search });
+    const { files, pagination } = getFiles({ page, limit, search, userId: user.userId });
 
     return NextResponse.json({
       files: files.map(f => ({
@@ -39,7 +44,7 @@ export async function GET(request) {
         createdAt: f.createdAt,
       })),
       pagination,
-      stats: getStats(),
+      stats: getStats(user.userId),
     });
   } catch (error) {
     console.error('GET /api/files error:', error);

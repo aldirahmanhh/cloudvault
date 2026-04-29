@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { cacheFile, getStorageType, formatSize } from '@/lib/storage';
+import { getUserFromRequest } from '@/lib/auth';
 import * as discord from '@/lib/discord';
 import * as telegram from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// POST /api/upload — upload a chunk or full file
-// Client sends: FormData with 'file', 'fileId', 'fileName', 'chunkIndex', 'totalChunks', 'mimeType', 'totalSize'
 export async function POST(request) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const formData = await request.formData();
     const file = formData.get('file');
     const fileId = formData.get('fileId') || uuidv4();
@@ -36,10 +38,9 @@ export async function POST(request) {
       chunkResult = await telegram.uploadFile(buffer, fileName, fileId, mimeType);
 
       // Also store metadata record in Discord (for cold-start recovery)
-      await discord.storeMetadata(fileId, fileName, mimeType, buffer.length, 'telegram', chunkResult);
+      await discord.storeMetadata(fileId, fileName, mimeType, buffer.length, 'telegram', chunkResult, user.userId);
     } else {
-      // Chunked → Discord
-      chunkResult = await discord.uploadChunk(buffer, fileName, chunkIndex, totalChunks, fileId, mimeType);
+      chunkResult = await discord.uploadChunk(buffer, fileName, chunkIndex, totalChunks, fileId, mimeType, user.userId);
     }
 
     // If this is the last chunk, cache the complete file
@@ -52,6 +53,7 @@ export async function POST(request) {
         mimeType,
         size: buffer.length,
         storageType,
+        userId: user.userId,
         chunks: [chunkResult],
         createdAt: new Date().toISOString(),
       });
