@@ -27,28 +27,38 @@ export default function SharePage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Check URL params for share target
+    // Pick up shared files from service worker cache
     const params = new URLSearchParams(window.location.search);
-    const sharedTitle = params.get('title');
-    const sharedText = params.get('text');
-    const sharedUrl = params.get('url');
+    const sharedParam = params.get('shared');
 
-    if (sharedTitle || sharedText || sharedUrl) {
-      setStatusMsg(`Shared: ${sharedTitle || sharedText || sharedUrl}`);
-    }
+    if (sharedParam) {
+      (async () => {
+        try {
+          const fileData = JSON.parse(sharedParam);
+          const cache = await caches.open('share-target');
+          const loadedFiles = [];
 
-    // Handle files from share target POST (via service worker cache)
-    if ('launchQueue' in window) {
-      window.launchQueue.setConsumer(async (launchParams) => {
-        if (launchParams.files?.length) {
-          const fileHandles = [];
-          for (const handle of launchParams.files) {
-            const file = await handle.getFile();
-            fileHandles.push(file);
+          for (const info of fileData) {
+            const response = await cache.match(`/shared/${info.id}`);
+            if (response) {
+              const blob = await response.blob();
+              const file = new File([blob], info.name || 'shared-file', { type: info.type || 'application/octet-stream' });
+              loadedFiles.push(file);
+              await cache.delete(`/shared/${info.id}`);
+            }
           }
-          setFiles(fileHandles);
+
+          if (loadedFiles.length > 0) {
+            setFiles(loadedFiles);
+            setStatusMsg(`${loadedFiles.length} file(s) shared`);
+          }
+
+          // Clean URL
+          window.history.replaceState({}, '', '/share');
+        } catch (e) {
+          console.warn('Failed to load shared files:', e);
         }
-      });
+      })();
     }
   }, []);
 

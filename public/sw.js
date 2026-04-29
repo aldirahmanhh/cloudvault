@@ -21,26 +21,34 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle share target POST
+// Handle share target POST — intercept and redirect with files cached
 self.addEventListener('fetch', (event) => {
-  if (event.request.method === 'POST' && event.request.url.includes('/share')) {
+  const url = new URL(event.request.url);
+  if (event.request.method === 'POST' && url.pathname === '/api/share') {
     event.respondWith(
       (async () => {
-        const formData = await event.request.formData();
-        const files = formData.getAll('file');
+        try {
+          const formData = await event.request.formData();
+          const files = formData.getAll('file');
 
-        // Store shared files temporarily
-        const cache = await caches.open('share-target');
-        const fileData = [];
-        for (const file of files) {
-          const id = Date.now() + '-' + Math.random().toString(36).slice(2);
-          await cache.put(`/shared/${id}`, new Response(file));
-          fileData.push({ id, name: file.name, size: file.size, type: file.type });
+          // Store shared files in cache for the share page to pick up
+          const cache = await caches.open('share-target');
+          const fileData = [];
+          for (const file of files) {
+            const id = Date.now() + '-' + Math.random().toString(36).slice(2);
+            await cache.put(`/shared/${id}`, new Response(file, {
+              headers: { 'X-File-Name': file.name, 'X-File-Type': file.type, 'Content-Length': file.size }
+            }));
+            fileData.push({ id, name: file.name, size: file.size, type: file.type });
+          }
+
+          // Redirect to share page
+          const params = new URLSearchParams({ shared: JSON.stringify(fileData) });
+          return Response.redirect(`/share?${params}`, 303);
+        } catch (e) {
+          // Fallback — just redirect to share page
+          return Response.redirect('/share', 303);
         }
-
-        // Redirect to share page with file info
-        const params = new URLSearchParams({ shared: JSON.stringify(fileData) });
-        return Response.redirect(`/share?${params}`, 303);
       })()
     );
   }
