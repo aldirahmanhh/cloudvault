@@ -211,26 +211,55 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   text-align: center; box-shadow: var(--shadow-sm);
 }
 
+/* ===== DONATE SECTION ===== */
+.donate-section {
+  margin-top: 32px; background: var(--surface);
+  border: 3px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.donate-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 3px solid var(--border);
+  background: var(--warning-bg);
+}
+.donate-title-row { display: flex; align-items: center; gap: 8px; }
+.donate-title { font-size: 18px; font-weight: 700; }
+.donate-cta { background: #be1e2d !important; border-color: #9a1824 !important; color: white !important; }
+.donate-cta:hover { background: #9a1824 !important; }
+.donate-empty { text-align: center; padding: 24px; color: var(--text-muted); font-size: 14px; }
+.donate-total { padding: 12px 18px; border-top: 2px dashed #e5e5e5; font-size: 13px; color: var(--text-secondary); text-align: center; }
+.donate-total strong { color: var(--text); }
+
+/* Leaderboard */
+.leaderboard { max-height: 320px; overflow-y: auto; }
+.leaderboard-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid #f0f0f0;
+  transition: background 0.1s;
+}
+.leaderboard-item:hover { background: #fafaf5; }
+.leaderboard-item.top { background: #fffbeb; }
+.leaderboard-item.top:first-child { background: #fef3c7; }
+.leaderboard-rank { width: 32px; text-align: center; font-size: 18px; flex-shrink: 0; }
+.rank-num { font-size: 14px; font-weight: 700; color: var(--text-muted); }
+.leaderboard-info { flex: 1; min-width: 0; }
+.leaderboard-name { font-size: 14px; font-weight: 600; }
+.leaderboard-msg { font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.leaderboard-amount { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--success); white-space: nowrap; }
+
 /* ===== FOOTER ===== */
 .footer {
-  margin-top: 40px; padding: 20px 0; border-top: 3px solid var(--border);
+  margin-top: 24px; padding: 20px 0; border-top: 3px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 16px;
+  flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-muted); font-weight: 500;
 }
-.footer-left { font-size: 12px; color: var(--text-muted); font-weight: 500; }
-.footer-donate { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.footer-donate > span { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-.donate-btn { font-size: 11px !important; padding: 6px 12px !important; }
-.donate-btn.saweria { background: #f59e0b; color: white; border-color: #d97706; }
-.donate-btn.saweria:hover { background: #d97706; }
-.donate-btn.kofi { background: #ff5e5b; color: white; border-color: #e04542; }
-.donate-btn.kofi:hover { background: #e04542; }
+.donate-btn { font-size: 11px !important; padding: 6px 14px !important; }
 .donate-btn.trakteer { background: #be1e2d; color: white; border-color: #9a1824; }
 .donate-btn.trakteer:hover { background: #9a1824; }
 
 @media (max-width: 768px) {
   .footer { flex-direction: column; text-align: center; }
-  .footer-donate { justify-content: center; }
+  .leaderboard-item { padding: 10px 14px; }
 }
 
 /* ===== SPINNER ===== */

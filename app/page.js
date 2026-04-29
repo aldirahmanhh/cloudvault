@@ -6,6 +6,7 @@ import {
   Search, HardDrive, Upload, Download, Trash2, X, ChevronLeft, ChevronRight,
   Image, Film, Music, FileText, Archive, Code, File, AlertTriangle,
   CheckCircle2, Loader2, LogOut, User, Grid, List, Play, RefreshCw,
+  Heart, Trophy, Gift,
 } from 'lucide-react';
 import { uploadFile, getFiles, deleteFile, getDownloadUrl, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
 import AuthForm from './components/AuthForm';
@@ -349,22 +350,85 @@ function Dashboard({ user, onLogout }) {
       {/* Sync Info */}
       {files.length > 0 && (
         <div className="sync-info">
-          <p>💡 Files sync every ~5 minutes. New uploads appear instantly but may take a moment to show after page refresh.</p>
+          <p>💡 Files sync every ~5 min. New uploads appear instantly but may take a moment after page refresh.</p>
         </div>
       )}
 
+      {/* Donate + Leaderboard */}
+      <DonateSection />
+
       {/* Footer */}
       <footer className="footer">
-        <div className="footer-left">
-          <span>CloudVault — Discord & Telegram Storage</span>
-        </div>
-        <div className="footer-donate">
-          <span>Support this project</span>
-          <a href="https://saweria.co/aldirahmanhh" target="_blank" rel="noopener" className="btn donate-btn saweria">🇮🇩 Saweria</a>
-          <a href="https://ko-fi.com/aldirahmanhh" target="_blank" rel="noopener" className="btn donate-btn kofi">☕ Ko-fi</a>
-          <a href="https://trakteer.id/aldirahmanhh" target="_blank" rel="noopener" className="btn donate-btn trakteer">🎁 Trakteer</a>
-        </div>
+        <span>CloudVault — Discord & Telegram Storage</span>
+        <a href="https://trakteer.id/anrizz" target="_blank" rel="noopener" className="btn donate-btn trakteer"><Gift size={14} /> Support via Trakteer</a>
       </footer>
+    </div>
+  );
+}
+
+// ===== DONATE LEADERBOARD =====
+function DonateSection() {
+  const [supporters, setSupporters] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/donations')
+      .then(r => r.ok ? r.json() : { supporters: [] })
+      .then(d => {
+        setSupporters(d.supporters || []);
+        setTotal(d.total || 0);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const formatRupiah = (num) => {
+    return 'Rp ' + num.toLocaleString('id-ID');
+  };
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  return (
+    <div className="donate-section">
+      <div className="donate-header">
+        <div className="donate-title-row">
+          <Trophy size={20} style={{ color: '#f59e0b' }} />
+          <h3 className="donate-title">Supporters</h3>
+        </div>
+        <a href="https://trakteer.id/anrizz" target="_blank" rel="noopener" className="btn btn-primary donate-cta">
+          <Heart size={14} /> Donate
+        </a>
+      </div>
+
+      {!loaded ? (
+        <div style={{ textAlign: 'center', padding: 20 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
+      ) : supporters.length === 0 ? (
+        <div className="donate-empty">
+          <p>Belum ada supporter. Jadi yang pertama! 🎉</p>
+        </div>
+      ) : (
+        <div className="leaderboard">
+          {supporters.map((s, i) => (
+            <div key={i} className={`leaderboard-item ${i < 3 ? 'top' : ''}`}>
+              <div className="leaderboard-rank">
+                {i < 3 ? medals[i] : <span className="rank-num">{i + 1}</span>}
+              </div>
+              <div className="leaderboard-info">
+                <div className="leaderboard-name">{s.name}</div>
+                {s.lastMessage && <div className="leaderboard-msg">&quot;{s.lastMessage}&quot;</div>}
+              </div>
+              <div className="leaderboard-amount">{formatRupiah(s.amount)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {total > 0 && (
+        <div className="donate-total">
+          Total: <strong>{formatRupiah(total)}</strong> dari {supporters.length} supporter
+        </div>
+      )}
     </div>
   );
 }
