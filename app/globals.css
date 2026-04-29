@@ -303,3 +303,28 @@ body {
   .header-title { font-size: 20px; }
   .file-gallery { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ===== SHARE / QUICK UPLOAD PAGE ===== */
+.share-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background-image: radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.08) 0%, transparent 50%);
+}
+.share-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px; max-width: 440px; width: 100%;
+  box-shadow: 0 0 60px rgba(139,92,246,0.08);
+}
+.share-header { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.share-dropzone {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 32px 16px; text-align: center; cursor: pointer;
+  transition: all 0.3s; background: var(--bg-card);
+}
+.share-dropzone:hover { border-color: var(--accent); background: var(--accent-glow); }
+.share-files { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.share-file-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.share-results { padding: 8px 0; }
