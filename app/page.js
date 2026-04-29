@@ -61,7 +61,8 @@ function Dashboard({ user, onLogout }) {
   const [previewFile, setPreviewFile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(null); // { name, storageType }
+  const [uploadSuccess, setUploadSuccess] = useState(null);
+  const [downloading, setDownloading] = useState(null); // { id, name, status, progress }
 
   const fetchFiles = useCallback(async (page = 1, background = false) => {
     try {
@@ -126,6 +127,44 @@ function Dashboard({ user, onLogout }) {
       dt.items.add(file);
       input.files = dt.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+  const handleDownload = async (file) => {
+    setDownloading({ id: file.id, name: file.name, status: 'Connecting to server...', progress: 10 });
+    setPreviewFile(null);
+
+    try {
+      setDownloading(prev => ({ ...prev, status: 'Fetching from storage...', progress: 30 }));
+
+      const response = await fetch(getDownloadUrl(file.id));
+
+      if (!response.ok) {
+        throw new Error(`Download failed (${response.status})`);
+      }
+
+      setDownloading(prev => ({ ...prev, status: 'Downloading file...', progress: 60 }));
+
+      const blob = await response.blob();
+
+      setDownloading(prev => ({ ...prev, status: 'Preparing file...', progress: 90 }));
+
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setDownloading(prev => ({ ...prev, status: 'Done! ✅', progress: 100 }));
+      setTimeout(() => setDownloading(null), 2000);
+    } catch (err) {
+      setDownloading(prev => ({ ...prev, status: `Error: ${err.message}`, progress: 0 }));
+      toast.error(`Download failed: ${err.message}`);
+      setTimeout(() => setDownloading(null), 3000);
     }
   };
 
@@ -268,7 +307,7 @@ function Dashboard({ user, onLogout }) {
                   </div>
                 </div>
                 <div className="file-actions" onClick={e => e.stopPropagation()}>
-                  <a href={getDownloadUrl(file.id)} className="btn" download><Download size={14} /><span>Download</span></a>
+                  <button className="btn" onClick={() => handleDownload(file)}><Download size={14} /><span>Download</span></button>
                   <button className="btn btn-danger btn-icon" onClick={() => setDeleteTarget(file)}><Trash2 size={14} /></button>
                 </div>
               </div>
@@ -320,7 +359,7 @@ function Dashboard({ user, onLogout }) {
             </div>
             <div className="preview-footer">
               <button className="btn btn-danger" onClick={() => { setDeleteTarget(previewFile); setPreviewFile(null); }}><Trash2 size={14} /> Delete</button>
-              <a href={getDownloadUrl(previewFile.id)} className="btn btn-primary" download><Download size={14} /> Download</a>
+              <button className="btn btn-primary" onClick={() => handleDownload(previewFile)}><Download size={14} /> Download</button>
             </div>
           </div>
         </div>
@@ -341,6 +380,40 @@ function Dashboard({ user, onLogout }) {
                 {deleting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Deleting...</> : 'Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Download Progress Popup */}
+      {downloading && (
+        <div className="modal-overlay" onClick={() => downloading.progress === 100 || downloading.progress === 0 ? setDownloading(null) : null}>
+          <div className="modal download-modal" onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: 12 }}>
+              {downloading.progress === 100 ? (
+                <CheckCircle2 size={40} style={{ color: 'var(--success)' }} />
+              ) : downloading.progress === 0 ? (
+                <AlertTriangle size={40} style={{ color: 'var(--danger)' }} />
+              ) : (
+                <Loader2 size={40} style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
+              )}
+            </div>
+            <h3 className="modal-title" style={{ textAlign: 'center', marginBottom: 4 }}>
+              {downloading.progress === 100 ? 'Download Complete!' : downloading.progress === 0 ? 'Download Failed' : 'Downloading...'}
+            </h3>
+            <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {downloading.name}
+            </p>
+            <div className="progress-bar" style={{ marginBottom: 8 }}>
+              <div className="progress-fill" style={{ width: `${downloading.progress}%`, background: downloading.progress === 100 ? 'var(--success)' : downloading.progress === 0 ? 'var(--danger)' : undefined }} />
+            </div>
+            <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>
+              {downloading.status}
+            </p>
+            {(downloading.progress === 100 || downloading.progress === 0) && (
+              <button className="btn btn-primary" onClick={() => setDownloading(null)} style={{ width: '100%', justifyContent: 'center', marginTop: 12, padding: 10 }}>
+                OK
+              </button>
+            )}
           </div>
         </div>
       )}

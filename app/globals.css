@@ -205,6 +205,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .share-file-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); }
 .share-results { padding: 8px 0; }
 
+/* ===== DOWNLOAD POPUP ===== */
+.download-modal { max-width: 360px; }
+
 /* ===== SUCCESS POPUP ===== */
 .success-modal { text-align: center; }
 .success-icon { color: var(--success); margin-bottom: 8px; }
