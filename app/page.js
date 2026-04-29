@@ -131,25 +131,56 @@ function Dashboard({ user, onLogout }) {
   };
 
   const handleDownload = async (file) => {
-    setDownloading({ id: file.id, name: file.name, status: 'Connecting to server...', progress: 10 });
+    setDownloading({ id: file.id, name: file.name, size: file.size, status: 'Connecting to server...', progress: 5, phase: 'connecting' });
     setPreviewFile(null);
 
     try {
-      setDownloading(prev => ({ ...prev, status: 'Fetching from storage...', progress: 30 }));
+      setDownloading(prev => ({ ...prev, status: 'Server is fetching file from storage...', progress: 10, phase: 'fetching' }));
 
+      // Start a timer to show realistic progress while waiting for server
+      let fakeProgress = 10;
+      const progressTimer = setInterval(() => {
+        fakeProgress = Math.min(fakeProgress + 2, 85);
+        setDownloading(prev => {
+          if (!prev || prev.phase !== 'fetching') return prev;
+          const elapsed = Math.round((Date.now() - fetchStart) / 1000);
+          return { ...prev, progress: fakeProgress, status: `Fetching from storage... (${elapsed}s)` };
+        });
+      }, 1000);
+
+      const fetchStart = Date.now();
       const response = await fetch(getDownloadUrl(file.id));
+      clearInterval(progressTimer);
 
       if (!response.ok) {
-        throw new Error(`Download failed (${response.status})`);
+        throw new Error(`Server error (${response.status})`);
       }
 
-      setDownloading(prev => ({ ...prev, status: 'Downloading file...', progress: 60 }));
+      // Read response with real progress tracking
+      const contentLength = response.headers.get('content-length');
+      const total = contentLength ? parseInt(contentLength) : file.size || 0;
 
-      const blob = await response.blob();
+      setDownloading(prev => ({ ...prev, status: `Downloading ${formatFileSize(total)}...`, progress: 85, phase: 'downloading' }));
 
-      setDownloading(prev => ({ ...prev, status: 'Preparing file...', progress: 90 }));
+      let received = 0;
+      const reader = response.body.getReader();
+      const chunks = [];
 
-      // Trigger browser download
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (total > 0) {
+          const dlProgress = 85 + Math.round((received / total) * 10);
+          setDownloading(prev => prev ? { ...prev, progress: Math.min(dlProgress, 95), status: `Downloading... ${formatFileSize(received)} / ${formatFileSize(total)}` } : prev);
+        }
+      }
+
+      setDownloading(prev => ({ ...prev, status: 'Saving file...', progress: 97, phase: 'saving' }));
+
+      // Combine chunks and trigger download
+      const blob = new Blob(chunks);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -159,12 +190,10 @@ function Dashboard({ user, onLogout }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      setDownloading(prev => ({ ...prev, status: 'Done! ✅', progress: 100 }));
-      setTimeout(() => setDownloading(null), 2000);
+      setDownloading(prev => ({ ...prev, status: 'File saved! ✅', progress: 100, phase: 'done' }));
     } catch (err) {
-      setDownloading(prev => ({ ...prev, status: `Error: ${err.message}`, progress: 0 }));
+      setDownloading(prev => ({ ...prev, status: `Failed: ${err.message}`, progress: 0, phase: 'error' }));
       toast.error(`Download failed: ${err.message}`);
-      setTimeout(() => setDownloading(null), 3000);
     }
   };
 
@@ -386,30 +415,35 @@ function Dashboard({ user, onLogout }) {
 
       {/* Download Progress Popup */}
       {downloading && (
-        <div className="modal-overlay" onClick={() => downloading.progress === 100 || downloading.progress === 0 ? setDownloading(null) : null}>
+        <div className="modal-overlay" onClick={() => downloading.phase === 'done' || downloading.phase === 'error' ? setDownloading(null) : null}>
           <div className="modal download-modal" onClick={e => e.stopPropagation()}>
             <div style={{ textAlign: 'center', marginBottom: 12 }}>
-              {downloading.progress === 100 ? (
+              {downloading.phase === 'done' ? (
                 <CheckCircle2 size={40} style={{ color: 'var(--success)' }} />
-              ) : downloading.progress === 0 ? (
+              ) : downloading.phase === 'error' ? (
                 <AlertTriangle size={40} style={{ color: 'var(--danger)' }} />
               ) : (
                 <Loader2 size={40} style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
               )}
             </div>
             <h3 className="modal-title" style={{ textAlign: 'center', marginBottom: 4 }}>
-              {downloading.progress === 100 ? 'Download Complete!' : downloading.progress === 0 ? 'Download Failed' : 'Downloading...'}
+              {downloading.phase === 'done' ? 'Download Complete! ✅' : downloading.phase === 'error' ? 'Download Failed' : 'Downloading...'}
             </h3>
             <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {downloading.name}
             </p>
             <div className="progress-bar" style={{ marginBottom: 8 }}>
-              <div className="progress-fill" style={{ width: `${downloading.progress}%`, background: downloading.progress === 100 ? 'var(--success)' : downloading.progress === 0 ? 'var(--danger)' : undefined }} />
+              <div className="progress-fill" style={{ width: `${downloading.progress}%`, background: downloading.phase === 'done' ? 'var(--success)' : downloading.phase === 'error' ? 'var(--danger)' : undefined, transition: 'width 0.5s' }} />
             </div>
             <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>
               {downloading.status}
             </p>
-            {(downloading.progress === 100 || downloading.progress === 0) && (
+            {downloading.phase === 'fetching' && (
+              <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                ⏳ Server sedang mengambil file dari Discord/Telegram. Ini bisa memakan waktu 10-60 detik tergantung ukuran file.
+              </p>
+            )}
+            {(downloading.phase === 'done' || downloading.phase === 'error') && (
               <button className="btn btn-primary" onClick={() => setDownloading(null)} style={{ width: '100%', justifyContent: 'center', marginTop: 12, padding: 10 }}>
                 OK
               </button>
