@@ -61,6 +61,7 @@ function Dashboard({ user, onLogout }) {
   const [previewFile, setPreviewFile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(null); // { name, storageType }
 
   const fetchFiles = useCallback(async (page = 1, background = false) => {
     try {
@@ -99,15 +100,12 @@ function Dashboard({ user, onLogout }) {
       setFiles(prev => [result, ...prev]);
       setStats(prev => ({ ...prev, totalFiles: prev.totalFiles + 1, totalSize: prev.totalSize + file.size }));
 
-      toast.success(`"${file.name}" uploaded!`);
       setUploadProgress(100);
-      setStatusLog(prev => [...prev, { message: 'File saved! May take ~5 min to appear after page refresh.', type: 'success' }]);
+      setUploading(false);
+      uploadLock.current = false;
 
-      // Keep progress visible for a moment
-      setTimeout(() => {
-        setUploading(false);
-        uploadLock.current = false;
-      }, 3000);
+      // Show success popup
+      setUploadSuccess({ name: file.name, size: file.size, storageType: result.storageType });
 
       fetchFiles(1, true).catch(() => {});
     } catch (err) {
@@ -347,10 +345,34 @@ function Dashboard({ user, onLogout }) {
         </div>
       )}
 
+      {/* Upload Success Popup */}
+      {uploadSuccess && (
+        <div className="modal-overlay" onClick={() => setUploadSuccess(null)}>
+          <div className="modal success-modal" onClick={e => e.stopPropagation()}>
+            <div className="success-icon">
+              <CheckCircle2 size={48} />
+            </div>
+            <h3 className="modal-title" style={{ textAlign: 'center', marginBottom: 8 }}>Upload Berhasil! 🎉</h3>
+            <div className="success-details">
+              <div className="success-row"><span>File</span><strong>{uploadSuccess.name}</strong></div>
+              <div className="success-row"><span>Size</span><strong>{formatFileSize(uploadSuccess.size)}</strong></div>
+              <div className="success-row"><span>Storage</span><strong>🎮 Discord {uploadSuccess.size <= 50 * 1024 * 1024 ? '+ ✈️ Telegram' : ''}</strong></div>
+            </div>
+            <div className="success-notice">
+              <p>⏱️ Dashboard akan otomatis sync setiap <strong>5 menit</strong>.</p>
+              <p>File sudah tersimpan dan bisa langsung didownload.</p>
+            </div>
+            <button className="btn btn-primary" onClick={() => setUploadSuccess(null)} style={{ width: '100%', justifyContent: 'center', marginTop: 12, padding: 12 }}>
+              OK, Mengerti
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sync Info */}
       {files.length > 0 && (
         <div className="sync-info">
-          <p>💡 Files sync every ~5 min. New uploads appear instantly but may take a moment after page refresh.</p>
+          <p>💡 Dashboard sync setiap ~5 menit. File baru langsung muncul setelah upload.</p>
         </div>
       )}
 

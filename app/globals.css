@@ -205,6 +205,16 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .share-file-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); }
 .share-results { padding: 8px 0; }
 
+/* ===== SUCCESS POPUP ===== */
+.success-modal { text-align: center; }
+.success-icon { color: var(--success); margin-bottom: 8px; }
+.success-details { background: #f5f5f0; border: 2px solid var(--border); border-radius: 8px; padding: 12px 16px; margin: 16px 0; text-align: left; }
+.success-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+.success-row span { color: var(--text-muted); }
+.success-row strong { font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.success-notice { background: var(--warning-bg); border: 2px solid var(--warning); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.success-notice p { margin: 2px 0; }
+
 /* ===== SYNC INFO ===== */
 .sync-info {
   margin-top: 24px; padding: 12px 16px;
