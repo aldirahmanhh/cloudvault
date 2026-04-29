@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getFileById, downloadFile, rebuildIndex } from '@/lib/storage';
+import { getFileById, downloadFile, downloadFromTelegramBackup, rebuildIndex } from '@/lib/storage';
 import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,19 @@ export async function GET(request, { params }) {
 
     console.log(`📥 Downloading "${file.name}" from ${file.storageType.toUpperCase()}`);
 
-    const buffer = await downloadFile(file);
+    // Try primary storage, fallback to backup
+    let buffer;
+    try {
+      buffer = await downloadFile(file);
+    } catch (primaryErr) {
+      console.warn(`⚠️ Primary download failed: ${primaryErr.message}, trying backup...`);
+      if (file.telegramBackup) {
+        buffer = await downloadFromTelegramBackup(file);
+        console.log(`✅ Downloaded from Telegram backup`);
+      } else {
+        throw primaryErr;
+      }
+    }
 
     const mimeType = file.mimeType || 'application/octet-stream';
     const isPreviewable = mimeType.startsWith('image/') || mimeType.startsWith('video/') || mimeType.startsWith('audio/');

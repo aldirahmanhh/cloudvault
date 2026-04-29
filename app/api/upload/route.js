@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { cacheFile, getStorageType, formatSize } from '@/lib/storage';
+import { cacheFile } from '@/lib/storage';
 import { getUserFromRequest } from '@/lib/auth';
 import * as discord from '@/lib/discord';
 import * as telegram from '@/lib/telegram';
@@ -27,23 +27,31 @@ export async function POST(request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const storageType = getStorageType(totalSize || buffer.length);
+    const fileSize = totalSize || buffer.length;
+    const canTelegram = fileSize <= 50 * 1024 * 1024; // Telegram max 50MB
 
-    console.log(`📤 Upload chunk ${chunkIndex + 1}/${totalChunks} of "${fileName}" → ${storageType.toUpperCase()}`);
+    console.log(`📤 Upload chunk ${chunkIndex + 1}/${totalChunks} of "${fileName}" → Discord${canTelegram && totalChunks === 1 ? ' + Telegram' : ''}`);
 
-    let chunkResult;
+    // Always upload to Discord (primary storage + metadata)
+    const discordResult = await discord.uploadChunk(buffer, fileName, chunkIndex, totalChunks, fileId, mimeType, user.userId);
 
-    if (storageType === 'telegram' && totalChunks === 1) {
-      // Single file → Telegram
-      chunkResult = await telegram.uploadFile(buffer, fileName, fileId, mimeType);
-
-      // Also store metadata record in Discord (for cold-start recovery)
-      await discord.storeMetadata(fileId, fileName, mimeType, buffer.length, 'telegram', chunkResult, user.userId);
-    } else {
-      chunkResult = await discord.uploadChunk(buffer, fileName, chunkIndex, totalChunks, fileId, mimeType, user.userId);
+    // Also upload to Telegram as backup (only for single-chunk files ≤ 50MB)
+    let telegramBackup = null;
+    if (canTelegram && totalChunks === 1) {
+      try {
+        telegramBackup = await telegram.uploadFile(buffer, fileName, fileId, mimeType);
+        // Store backup reference in Discord metadata message
+        await discord.storeMetadata(fileId, fileName, mimeType, buffer.length, 'dual', {
+          ...discordResult,
+          telegramMessageId: telegramBackup.messageId,
+          telegramChannelId: telegramBackup.channelId,
+        }, user.userId);
+        console.log(`  ✈️ Telegram backup saved`);
+      } catch (err) {
+        console.warn(`  ⚠️ Telegram backup failed: ${err.message}`);
+      }
     }
 
-    // If this is the last chunk, cache the complete file
     const isLastChunk = chunkIndex === totalChunks - 1;
 
     if (isLastChunk && totalChunks === 1) {
@@ -52,9 +60,10 @@ export async function POST(request) {
         name: fileName,
         mimeType,
         size: buffer.length,
-        storageType,
+        storageType: 'discord',
         userId: user.userId,
-        chunks: [chunkResult],
+        chunks: [discordResult],
+        telegramBackup,
         createdAt: new Date().toISOString(),
       });
     }
@@ -63,9 +72,10 @@ export async function POST(request) {
       fileId,
       chunkIndex,
       totalChunks,
-      storageType,
-      messageId: chunkResult.messageId,
-      channelId: chunkResult.channelId,
+      storageType: 'discord',
+      messageId: discordResult.messageId,
+      channelId: discordResult.channelId,
+      hasBackup: !!telegramBackup,
       isLastChunk,
     });
   } catch (error) {
