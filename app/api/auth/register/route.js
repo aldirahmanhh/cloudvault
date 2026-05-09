@@ -1,10 +1,33 @@
 import { NextResponse } from 'next/server';
 import { registerUser, createToken } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
+    // Rate limiting: 3 registrations per IP per 15 minutes
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(`register:${clientIp}`, 3, 15 * 60 * 1000);
+    
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: `Terlalu banyak percobaan registrasi. Coba lagi dalam ${rateCheck.retryAfter} detik.`,
+          retryAfter: rateCheck.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateCheck.retryAfter.toString(),
+            'X-RateLimit-Limit': '3',
+            'X-RateLimit-Remaining': rateCheck.remaining.toString(),
+            'X-RateLimit-Reset': new Date(rateCheck.resetAt).toISOString(),
+          },
+        }
+      );
+    }
+
     const { username, password } = await request.json();
 
     if (!username || !password) {
