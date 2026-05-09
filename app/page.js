@@ -277,8 +277,22 @@ function Dashboard({ user, onLogout }) {
           <input placeholder="Search files..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="view-toggle">
-          <button className={`view-btn ${viewMode === 'gallery' ? 'active' : ''}`} onClick={() => setViewMode('gallery')}><Grid size={16} /></button>
-          <button className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}><List size={16} /></button>
+          <button 
+            className={`view-btn ${viewMode === 'gallery' ? 'active' : ''}`} 
+            onClick={() => setViewMode('gallery')}
+            aria-label="Switch to gallery view"
+            title="Gallery view"
+          >
+            <Grid size={16} />
+          </button>
+          <button 
+            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} 
+            onClick={() => setViewMode('list')}
+            aria-label="Switch to list view"
+            title="List view"
+          >
+            <List size={16} />
+          </button>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {['all', 'discord', 'telegram'].map(f => (
@@ -341,7 +355,14 @@ function Dashboard({ user, onLogout }) {
                 </div>
                 <div className="file-actions" onClick={e => e.stopPropagation()}>
                   <button className="btn" onClick={() => handleDownload(file)}><Download size={14} /><span>Download</span></button>
-                  <button className="btn btn-danger btn-icon" onClick={() => setDeleteTarget(file)}><Trash2 size={14} /></button>
+                  <button 
+                  className="btn btn-danger btn-icon" 
+                  onClick={() => setDeleteTarget(file)}
+                  aria-label={`Delete ${file.name}`}
+                  title="Delete file"
+                >
+                  <Trash2 size={14} />
+                </button>
                 </div>
               </div>
             );
@@ -365,7 +386,14 @@ function Dashboard({ user, onLogout }) {
             <div className="preview-header">
               <div className="preview-title-row">
                 <h3 className="preview-title">{previewFile.name}</h3>
-                <button className="btn btn-icon" onClick={() => setPreviewFile(null)}><X size={18} /></button>
+                <button 
+            className="btn btn-icon" 
+            onClick={() => setPreviewFile(null)}
+            aria-label="Close preview"
+            title="Close"
+          >
+            <X size={18} />
+          </button>
               </div>
               <div className="preview-meta-row">
                 <span>{formatFileSize(previewFile.size)}</span>
@@ -391,7 +419,13 @@ function Dashboard({ user, onLogout }) {
               )}
             </div>
             <div className="preview-footer">
-              <button className="btn btn-danger" onClick={() => { setDeleteTarget(previewFile); setPreviewFile(null); }}><Trash2 size={14} /> Delete</button>
+              <button 
+              className="btn btn-danger" 
+              onClick={() => { setDeleteTarget(previewFile); setPreviewFile(null); }}
+              aria-label="Delete this file"
+            >
+              <Trash2 size={14} /> Delete
+            </button>
               <button className="btn btn-primary" onClick={() => handleDownload(previewFile)}><Download size={14} /> Download</button>
             </div>
           </div>
@@ -493,7 +527,7 @@ function Dashboard({ user, onLogout }) {
       {/* Footer */}
       <footer className="footer">
         <span>CloudVault — Discord & Telegram Storage</span>
-        <a href="https://trakteer.id/anrizz" target="_blank" rel="noopener" className="btn donate-btn trakteer"><Gift size={14} /> Support via Trakteer</a>
+            <a href="https://teer.id/anrizz" target="_blank" rel="noopener" className="btn donate-btn trakteer"><Gift size={14} /> Support via Trakteer</a>
       </footer>
     </div>
   );
@@ -529,7 +563,7 @@ function DonateSection() {
           <Trophy size={20} style={{ color: '#f59e0b' }} />
           <h3 className="donate-title">Supporters</h3>
         </div>
-        <a href="https://trakteer.id/anrizz" target="_blank" rel="noopener" className="btn btn-primary donate-cta">
+        <a href="https://teer.id/anrizz" target="_blank" rel="noopener" className="btn btn-primary donate-cta">
           <Heart size={14} /> Donate
         </a>
       </div>
