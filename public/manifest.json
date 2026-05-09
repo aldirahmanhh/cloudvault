@@ -1,11 +1,15 @@
 {
-  "name": "CloudVault",
+  "name": "CloudVault - Free Cloud Storage",
   "short_name": "CloudVault",
-  "description": "Cloud storage powered by Discord & Telegram",
+  "description": "Free unlimited cloud storage powered by Discord & Telegram. Upload, manage, and share files up to 2GB with zero database dependency. Perfect for developers and power users.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a12",
   "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "productivity", "storage"],
+  "lang": "en-US",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/logo.png",
@@ -18,6 +22,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "CloudVault Dashboard"
     }
   ],
   "share_target": {
@@ -35,5 +47,14 @@
         }
       ]
     }
-  }
+  },
+  "shortcuts": [
+    {
+      "name": "Upload File",
+      "short_name": "Upload",
+      "description": "Upload a new file to CloudVault",
+      "url": "/?action=upload",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    }
+  ]
 }
