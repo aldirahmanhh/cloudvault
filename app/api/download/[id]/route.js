@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFileById, downloadFile, downloadFromTelegramBackup, rebuildIndex } from '@/lib/storage';
 import { getUserFromRequest } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -9,6 +10,27 @@ export async function GET(request, { params }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Rate limiting: 50 downloads per user per 10 minutes
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(`download:${user.userId}:${clientIp}`, 50, 10 * 60 * 1000);
+    
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: `Terlalu banyak download. Coba lagi dalam ${rateCheck.retryAfter} detik.`,
+          retryAfter: rateCheck.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateCheck.retryAfter.toString(),
+            'X-RateLimit-Limit': '50',
+            'X-RateLimit-Remaining': rateCheck.remaining.toString(),
+          },
+        }
+      );
+    }
 
     await rebuildIndex();
     const file = getFileById(params.id);

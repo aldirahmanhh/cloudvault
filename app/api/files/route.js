@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFiles, rebuildIndex, getStats } from '@/lib/storage';
 import { getUserFromRequest } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,27 @@ export async function GET(request) {
 
     const user = await getUserFromRequest(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Rate limiting: 100 list requests per user per 5 minutes
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(`files:${user.userId}:${clientIp}`, 100, 5 * 60 * 1000);
+    
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: `Terlalu banyak request. Coba lagi dalam ${rateCheck.retryAfter} detik.`,
+          retryAfter: rateCheck.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateCheck.retryAfter.toString(),
+            'X-RateLimit-Limit': '100',
+            'X-RateLimit-Remaining': rateCheck.remaining.toString(),
+          },
+        }
+      );
+    }
 
     // Rebuild index — blocks only on cold start (empty cache)
     await rebuildIndex();

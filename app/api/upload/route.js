@@ -2,16 +2,61 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { cacheFile } from '@/lib/storage';
 import { getUserFromRequest } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import * as discord from '@/lib/discord';
 import * as telegram from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+// Allowed MIME types (whitelist approach)
+const ALLOWED_MIME_TYPES = [
+  // Images
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp',
+  // Videos
+  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo',
+  // Audio
+  'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/aac', 'audio/flac',
+  // Documents
+  'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain', 'text/csv', 'text/html', 'text/css', 'text/javascript',
+  // Archives
+  'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed', 'application/x-tar', 'application/gzip',
+  // Code
+  'application/json', 'application/xml',
+  // Fallback
+  'application/octet-stream',
+];
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+
 export async function POST(request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Rate limiting: 20 uploads per user per 10 minutes
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(`upload:${user.userId}:${clientIp}`, 20, 10 * 60 * 1000);
+    
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: `Terlalu banyak upload. Coba lagi dalam ${rateCheck.retryAfter} detik.`,
+          retryAfter: rateCheck.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateCheck.retryAfter.toString(),
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': rateCheck.remaining.toString(),
+          },
+        }
+      );
+    }
 
     const formData = await request.formData();
     const file = formData.get('file');
@@ -24,6 +69,22 @@ export async function POST(request) {
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Validate file size
+    if (totalSize > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File terlalu besar. Maksimal ${MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB` },
+        { status: 413 }
+      );
+    }
+
+    // Validate MIME type
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+      return NextResponse.json(
+        { error: `Tipe file tidak diizinkan: ${mimeType}` },
+        { status: 415 }
+      );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
