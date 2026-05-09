@@ -25,6 +25,7 @@ export async function GET(request, { params }) {
       createdAt: file.createdAt,
     });
   } catch (error) {
+    console.error('GET /api/files/[id] error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -49,6 +50,7 @@ export async function DELETE(request, { params }) {
     uncacheFile(params.id);
     return NextResponse.json({ message: 'File deleted' });
   } catch (error) {
+    console.error('DELETE /api/files/[id] error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

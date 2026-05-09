@@ -22,7 +22,10 @@ export default function Home() {
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.user) setUser(d.user); })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Auth check failed:', err);
+        // Silent fail is OK for auth check - user will see login form
+      })
       .finally(() => setAuthLoading(false));
   }, []);
 
@@ -75,6 +78,7 @@ function Dashboard({ user, onLogout }) {
       if (data.stats) setStats(data.stats);
     } catch (err) {
       console.error('Fetch error:', err);
+      toast.error('Gagal memuat file. Coba refresh halaman.');
     } finally {
       setLoading(false);
       setSyncing(false);
