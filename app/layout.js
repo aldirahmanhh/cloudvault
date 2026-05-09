@@ -1,11 +1,10 @@
 import './globals.css';
 import ToastProvider from './components/ToastProvider';
 import ServiceWorker from './components/ServiceWorker';
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cloudvault.my.id';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'CloudVault - Free Cloud Storage Powered by Discord & Telegram',
     template: '%s | CloudVault',
@@ -43,7 +42,7 @@ export const metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: siteUrl,
+    url: SITE_URL,
     siteName: 'CloudVault',
     title: 'CloudVault - Free Cloud Storage Powered by Discord & Telegram',
     description: 'Free unlimited cloud storage using Discord and Telegram. Upload files up to 2GB, manage with ease, zero database required.',
@@ -101,7 +100,7 @@ export default function RootLayout({ children }) {
     '@type': 'WebApplication',
     name: 'CloudVault',
     description: 'Free unlimited cloud storage solution using Discord and Telegram as backend. Upload, manage, and share files with zero database dependency.',
-    url: siteUrl,
+    url: SITE_URL,
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Web Browser',
     offers: {
@@ -119,7 +118,7 @@ export default function RootLayout({ children }) {
       'Mobile responsive',
       'PWA support',
     ],
-    screenshot: `${siteUrl}/logo.png`,
+    screenshot: `${SITE_URL}/logo.png`,
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.8',
@@ -132,7 +131,7 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="icon" href="/logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo.png" />
-        <link rel="canonical" href={siteUrl} />
+        <link rel="canonical" href={SITE_URL} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

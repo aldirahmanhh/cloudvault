@@ -1,4 +1,4 @@
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cloudvault.my.id';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
   title: 'Quick Upload - CloudVault',
@@ -6,7 +6,7 @@ export const metadata = {
   openGraph: {
     title: 'Quick Upload - CloudVault',
     description: 'Quickly upload and share files using CloudVault. Drag and drop files up to 2GB.',
-    url: `${siteUrl}/share`,
+    url: `${SITE_URL}/share`,
     siteName: 'CloudVault',
     type: 'website',
     images: [

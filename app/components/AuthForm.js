@@ -37,26 +37,57 @@ export default function AuthForm({ onLogin }) {
         <h1 className="auth-title">CloudVault</h1>
         <p className="auth-subtitle">Your files. Discord & Telegram powered.</p>
 
-        <div className="auth-tabs">
-          <button className={`auth-tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); }}>
+        <div className="auth-tabs" role="tablist">
+          <button 
+            className={`auth-tab ${mode === 'login' ? 'active' : ''}`} 
+            onClick={() => { setMode('login'); setError(''); }}
+            role="tab"
+            aria-selected={mode === 'login'}
+            aria-label="Switch to login"
+          >
             <LogIn size={14} /> Login
           </button>
-          <button className={`auth-tab ${mode === 'register' ? 'active' : ''}`} onClick={() => { setMode('register'); setError(''); }}>
+          <button 
+            className={`auth-tab ${mode === 'register' ? 'active' : ''}`} 
+            onClick={() => { setMode('register'); setError(''); }}
+            role="tab"
+            aria-selected={mode === 'register'}
+            aria-label="Switch to register"
+          >
             <UserPlus size={14} /> Register
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label>Username</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter username" required minLength={3} />
+            <label htmlFor="username">Username</label>
+            <input 
+              id="username"
+              type="text" 
+              value={username} 
+              onChange={e => setUsername(e.target.value)} 
+              placeholder="Enter username" 
+              required 
+              minLength={3}
+              autoComplete="username"
+              autoFocus
+            />
           </div>
           <div className="auth-field">
-            <label>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" required minLength={4} />
+            <label htmlFor="password">Password</label>
+            <input 
+              id="password"
+              type="password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              placeholder="Enter password" 
+              required 
+              minLength={4}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            />
           </div>
-          {error && <div className="auth-error">⚠️ {error}</div>}
-          <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
+          {error && <div className="auth-error" role="alert">⚠️ {error}</div>}
+          <button type="submit" className="btn btn-primary auth-submit" disabled={loading} aria-label={mode === 'login' ? 'Login to account' : 'Create new account'}>
             {loading && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
             {mode === 'login' ? 'LOGIN' : 'CREATE ACCOUNT'}
           </button>
