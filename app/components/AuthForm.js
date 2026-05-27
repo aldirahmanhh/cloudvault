@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LogIn, UserPlus, Loader2 } from 'lucide-react';
 
 export default function AuthForm({ onLogin }) {
@@ -9,16 +9,52 @@ export default function AuthForm({ onLogin }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef(null);
+
+  useEffect(() => {
+    // Render Turnstile widget when script loads
+    const renderTurnstile = () => {
+      if (window.turnstile && turnstileRef.current) {
+        window.turnstile.render(turnstileRef.current, {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          callback: (token) => setCaptchaToken(token),
+          'error-callback': () => setError('CAPTCHA verification failed. Please try again.'),
+        });
+      }
+    };
+
+    if (window.turnstile) {
+      renderTurnstile();
+    } else {
+      window.addEventListener('turnstile-load', renderTurnstile);
+      return () => window.removeEventListener('turnstile-load', renderTurnstile);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Reset CAPTCHA token on mode change
+    setCaptchaToken('');
+    if (window.turnstile && turnstileRef.current) {
+      window.turnstile.reset(turnstileRef.current);
+    }
+  }, [mode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification.');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(mode === 'login' ? '/api/auth/login' : '/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, captchaToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -86,6 +122,7 @@ export default function AuthForm({ onLogin }) {
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
           </div>
+          <div className="auth-captcha" ref={turnstileRef}></div>
           {error && <div className="auth-error" role="alert">⚠️ {error}</div>}
           <button type="submit" className="btn btn-primary auth-submit" disabled={loading} aria-label={mode === 'login' ? 'Login to account' : 'Create new account'}>
             {loading && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}

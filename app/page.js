@@ -67,6 +67,11 @@ function Dashboard({ user, onLogout }) {
   const [uploadSuccess, setUploadSuccess] = useState(null);
   const [downloading, setDownloading] = useState(null); // { id, name, status, progress }
 
+  const [isMobile, setIsMobile] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isPWA, setIsPWA] = useState(false);
+  const [showQuickShareTooltip, setShowQuickShareTooltip] = useState(false);
+
   const fetchFiles = useCallback(async (page = 1, background = false) => {
     try {
       if (background) setSyncing(true); else setLoading(true);
@@ -89,6 +94,15 @@ function Dashboard({ user, onLogout }) {
     const t = setTimeout(() => fetchFiles(1), 300);
     return () => clearTimeout(t);
   }, [search, filter, fetchFiles]);
+
+  useEffect(() => {
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const pwa = window.matchMedia('(display-mode: standalone)').matches;
+    setIsMobile(mobile);
+    setIsIOS(ios);
+    setIsPWA(pwa);
+  }, []);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -250,6 +264,39 @@ function Dashboard({ user, onLogout }) {
         <p className="upload-subtitle">{!uploading && 'or click to browse'}</p>
         <p className="upload-hint">Files saved to Discord + Telegram backup (≤50MB)</p>
       </div>
+
+      {/* Quick Upload (Mobile Only) */}
+      {isMobile && (
+        <div className="quick-upload-section">
+          <a href="/share" className="btn btn-primary quick-upload-btn">
+            <Upload size={16} /> Quick Upload
+          </a>
+          {!isIOS && !isPWA && (
+            <div className="quick-upload-hint">
+              <button 
+                type="button"
+                className="hint-toggle" 
+                onClick={() => setShowQuickShareTooltip(!showQuickShareTooltip)}
+                aria-label="Show quick share info"
+              >
+                ℹ️
+              </button>
+              {showQuickShareTooltip && (
+                <div className="quick-share-tooltip">
+                  <strong>💡 Tip:</strong> Install PWA untuk quick share dari app lain!
+                  <br />
+                  Share foto/file dari Gallery → pilih CloudVault
+                </div>
+              )}
+            </div>
+          )}
+          {isIOS && (
+            <p className="quick-upload-ios-note">
+              iOS: Gunakan tombol ini untuk upload cepat
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Progress */}
       {uploading && (

@@ -1,13 +1,35 @@
 import { NextResponse } from 'next/server';
 import { registerUser, createToken } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { verifyCaptcha } from '@/lib/captcha';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    // Rate limiting: 3 registrations per IP per 15 minutes
+    const { username, password, captchaToken } = await request.json();
+
+    if (!username || !password) {
+      return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
+    }
+    if (username.length < 3) {
+      return NextResponse.json({ error: 'Username minimal 3 karakter' }, { status: 400 });
+    }
+    if (password.length < 4) {
+      return NextResponse.json({ error: 'Password minimal 4 karakter' }, { status: 400 });
+    }
+
+    // Verify CAPTCHA
     const clientIp = getClientIp(request);
+    const captchaResult = await verifyCaptcha(captchaToken, clientIp);
+    if (!captchaResult.success) {
+      return NextResponse.json(
+        { error: captchaResult.error || 'Verifikasi CAPTCHA gagal. Silakan coba lagi.' },
+        { status: 400 }
+      );
+    }
+
+    // Rate limiting: 3 registrations per IP per 15 minutes
     const rateCheck = checkRateLimit(`register:${clientIp}`, 3, 15 * 60 * 1000);
     
     if (!rateCheck.allowed) {
@@ -26,18 +48,6 @@ export async function POST(request) {
           },
         }
       );
-    }
-
-    const { username, password } = await request.json();
-
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
-    }
-    if (username.length < 3) {
-      return NextResponse.json({ error: 'Username minimal 3 karakter' }, { status: 400 });
-    }
-    if (password.length < 4) {
-      return NextResponse.json({ error: 'Password minimal 4 karakter' }, { status: 400 });
     }
 
     const user = await registerUser(username.trim(), password);

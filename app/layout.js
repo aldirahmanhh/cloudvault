@@ -1,4 +1,5 @@
 import './globals.css';
+import Script from 'next/script';
 import ToastProvider from './components/ToastProvider';
 import ServiceWorker from './components/ServiceWorker';
 import { SITE_URL } from '@/lib/constants';
@@ -140,6 +141,10 @@ export default function RootLayout({ children }) {
       <body>
         <ToastProvider />
         <ServiceWorker />
+        <Script 
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+          strategy="lazyOnload"
+        />
         {children}
       </body>
     </html>
