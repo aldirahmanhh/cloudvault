@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { registerUser, createToken } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
-import { verifyCaptcha } from '@/lib/captcha';
+import { verifyChallenge } from '@/lib/captcha';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    const { username, password, captchaToken } = await request.json();
+    const { username, password, captchaToken, captchaAnswer } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
@@ -21,7 +21,7 @@ export async function POST(request) {
 
     // Verify CAPTCHA
     const clientIp = getClientIp(request);
-    const captchaResult = await verifyCaptcha(captchaToken, clientIp);
+    const captchaResult = await verifyChallenge(captchaToken, captchaAnswer);
     if (!captchaResult.success) {
       return NextResponse.json(
         { error: captchaResult.error || 'Verifikasi CAPTCHA gagal. Silakan coba lagi.' },

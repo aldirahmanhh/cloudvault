@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { LogIn, UserPlus, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { LogIn, UserPlus, Loader2, RefreshCw } from 'lucide-react';
 
 export default function AuthForm({ onLogin }) {
   const [mode, setMode] = useState('login');
@@ -9,43 +9,37 @@ export default function AuthForm({ onLogin }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [captchaToken, setCaptchaToken] = useState('');
-  const turnstileRef = useRef(null);
+  const [challenge, setChallenge] = useState('');
+  const [challengeToken, setChallengeToken] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [loadingChallenge, setLoadingChallenge] = useState(false);
 
-  useEffect(() => {
-    // Render Turnstile widget when script loads
-    const renderTurnstile = () => {
-      if (window.turnstile && turnstileRef.current) {
-        window.turnstile.render(turnstileRef.current, {
-          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-          callback: (token) => setCaptchaToken(token),
-          'error-callback': () => setError('CAPTCHA verification failed. Please try again.'),
-        });
-      }
-    };
-
-    if (window.turnstile) {
-      renderTurnstile();
-    } else {
-      window.addEventListener('turnstile-load', renderTurnstile);
-      return () => window.removeEventListener('turnstile-load', renderTurnstile);
+  const fetchChallenge = useCallback(async () => {
+    setLoadingChallenge(true);
+    try {
+      const res = await fetch('/api/auth/challenge');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load challenge');
+      setChallenge(data.challenge);
+      setChallengeToken(data.token);
+      setAnswer('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingChallenge(false);
     }
   }, []);
 
   useEffect(() => {
-    // Reset CAPTCHA token on mode change
-    setCaptchaToken('');
-    if (window.turnstile && turnstileRef.current) {
-      window.turnstile.reset(turnstileRef.current);
-    }
-  }, [mode]);
+    fetchChallenge();
+  }, [fetchChallenge]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!captchaToken) {
-      setError('Please complete the CAPTCHA verification.');
+    if (!answer.trim()) {
+      setError('Jawaban tidak boleh kosong');
       return;
     }
 
@@ -54,13 +48,14 @@ export default function AuthForm({ onLogin }) {
       const res = await fetch(mode === 'login' ? '/api/auth/login' : '/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, captchaToken }),
+        body: JSON.stringify({ username, password, challengeToken, answer }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
       onLogin(data.user);
     } catch (err) {
       setError(err.message);
+      fetchChallenge();
     } finally {
       setLoading(false);
     }
@@ -75,6 +70,7 @@ export default function AuthForm({ onLogin }) {
 
         <div className="auth-tabs" role="tablist">
           <button 
+            type="button"
             className={`auth-tab ${mode === 'login' ? 'active' : ''}`} 
             onClick={() => { setMode('login'); setError(''); }}
             role="tab"
@@ -84,6 +80,7 @@ export default function AuthForm({ onLogin }) {
             <LogIn size={14} /> Login
           </button>
           <button 
+            type="button"
             className={`auth-tab ${mode === 'register' ? 'active' : ''}`} 
             onClick={() => { setMode('register'); setError(''); }}
             role="tab"
@@ -106,7 +103,6 @@ export default function AuthForm({ onLogin }) {
               required 
               minLength={3}
               autoComplete="username"
-              autoFocus
             />
           </div>
           <div className="auth-field">
@@ -122,7 +118,31 @@ export default function AuthForm({ onLogin }) {
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
           </div>
-          <div className="auth-captcha" ref={turnstileRef}></div>
+          <div className="auth-field">
+            <label htmlFor="captcha">Solve this: {loadingChallenge ? '...' : challenge}</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                id="captcha"
+                type="text" 
+                value={answer} 
+                onChange={e => setAnswer(e.target.value)} 
+                placeholder="Your answer" 
+                required 
+                disabled={loadingChallenge}
+                autoComplete="off"
+              />
+              <button 
+                type="button"
+                onClick={fetchChallenge}
+                disabled={loadingChallenge}
+                className="btn"
+                aria-label="Refresh challenge"
+                style={{ padding: '0 12px' }}
+              >
+                <RefreshCw size={16} />
+              </button>
+            </div>
+          </div>
           {error && <div className="auth-error" role="alert">⚠️ {error}</div>}
           <button type="submit" className="btn btn-primary auth-submit" disabled={loading} aria-label={mode === 'login' ? 'Login to account' : 'Create new account'}>
             {loading && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
