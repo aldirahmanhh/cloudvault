@@ -133,6 +133,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .gallery-meta { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; font-weight: 500; }
 .gallery-badge { position: absolute; top: 8px; right: 8px; }
 .gallery-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -70%); width: 44px; height: 44px; background: white; border: 3px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); }
+.gallery-video-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #e8e4dc 0%, #d5d0c8 100%); display: flex; align-items: center; justify-content: center; position: relative; color: var(--text-muted); }
 
 /* ===== BUTTONS ===== */
 .btn { padding: 8px 14px; border-radius: 8px; border: 2px solid var(--border); background: var(--surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.1s; display: flex; align-items: center; gap: 5px; text-decoration: none; color: var(--text); box-shadow: var(--shadow-sm); font-family: var(--font); }
@@ -308,4 +309,37 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   .header-title { font-size: 22px; }
   .file-gallery { grid-template-columns: repeat(2, 1fr); }
   .stat-item { padding: 6px 10px; }
+}
+
+/* ===== TOUCH DEVICE PERF ===== */
+@media (hover: none) and (pointer: coarse) {
+  .gallery-item,
+  .file-item,
+  .btn,
+  .filter-btn,
+  .pagination button,
+  .upload-zone,
+  .quick-upload-btn,
+  .hint-toggle,
+  .search-box input,
+  .auth-field input,
+  .btn-logout { transition: none; }
+
+  .gallery-item:hover,
+  .file-item:hover,
+  .btn:hover,
+  .filter-btn:hover,
+  .pagination button:hover:not(:disabled),
+  .upload-zone:hover,
+  .quick-upload-btn:hover,
+  .hint-toggle:hover,
+  .search-box input:focus,
+  .auth-field input:focus,
+  .btn-logout:hover { transform: none; box-shadow: var(--shadow-sm); }
+
+  .file-gallery { contain: layout style; }
+  .file-list { contain: layout style; }
+  .gallery-item { contain: layout style paint; }
+  .file-item { contain: layout style paint; }
+  .preview-video { will-change: auto; }
 }
