@@ -1,19 +1,66 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LogIn, UserPlus, Loader2, RefreshCw } from 'lucide-react';
 
 /**
- * Convert math challenge string to screen-reader friendly text.
- * "12 × 4" -> "12 times 4"
- * @param {string} c
+ * Draw CAPTCHA challenge on canvas with noise and mild distortion.
+ * Keeps challenge text out of the DOM so basic bots cannot scrape it.
+ * @param {HTMLCanvasElement} canvas
+ * @param {string} text
  */
-function challengeToA11y(c) {
-  if (!c) return '';
-  return c
-    .replace(/\+/g, 'plus')
-    .replace(/-/g, 'minus')
-    .replace(/×/g, 'times');
+function drawCaptcha(canvas, text) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, '#f8fafc');
+  gradient.addColorStop(1, '#e2e8f0');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  for (let i = 0; i < 70; i++) {
+    ctx.fillStyle = `rgba(${80 + Math.random() * 120}, ${80 + Math.random() * 120}, ${80 + Math.random() * 120}, 0.28)`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * width, Math.random() * height, Math.random() * 2 + 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let i = 0; i < 7; i++) {
+    ctx.strokeStyle = `rgba(${40 + Math.random() * 100}, ${40 + Math.random() * 100}, ${40 + Math.random() * 100}, 0.35)`;
+    ctx.lineWidth = Math.random() * 1.8 + 0.6;
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * width, Math.random() * height);
+    ctx.bezierCurveTo(
+      Math.random() * width,
+      Math.random() * height,
+      Math.random() * width,
+      Math.random() * height,
+      Math.random() * width,
+      Math.random() * height
+    );
+    ctx.stroke();
+  }
+
+  const chars = text.split('');
+  const charGap = width / (chars.length + 1);
+  ctx.textBaseline = 'middle';
+
+  chars.forEach((char, index) => {
+    ctx.save();
+    const x = charGap * (index + 1) + (Math.random() * 8 - 4);
+    const y = height / 2 + (Math.random() * 10 - 5);
+    ctx.translate(x, y);
+    ctx.rotate((Math.random() - 0.5) * 0.35);
+    ctx.font = `${28 + Math.random() * 6}px Georgia, serif`;
+    ctx.fillStyle = `hsl(${210 + Math.random() * 40}, 55%, ${20 + Math.random() * 18}%)`;
+    ctx.fillText(char, 0, 0);
+    ctx.restore();
+  });
 }
 
 export default function AuthForm({ onLogin }) {
@@ -26,6 +73,7 @@ export default function AuthForm({ onLogin }) {
   const [challengeToken, setChallengeToken] = useState('');
   const [answer, setAnswer] = useState('');
   const [loadingChallenge, setLoadingChallenge] = useState(false);
+  const captchaCanvasRef = useRef(null);
 
   const fetchChallenge = useCallback(async () => {
     setLoadingChallenge(true);
@@ -46,6 +94,11 @@ export default function AuthForm({ onLogin }) {
   useEffect(() => {
     fetchChallenge();
   }, [fetchChallenge]);
+
+  useEffect(() => {
+    if (!challenge || !captchaCanvasRef.current) return;
+    drawCaptcha(captchaCanvasRef.current, challenge);
+  }, [challenge]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,23 +185,20 @@ export default function AuthForm({ onLogin }) {
             />
           </div>
           <div className="auth-field">
-            <label htmlFor="captcha">
-              Solve this:{' '}
-              <span role="math" aria-label={loadingChallenge ? 'Loading challenge' : challengeToA11y(challenge)}>
-                {loadingChallenge ? '...' : challenge}
-              </span>
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input 
-                id="captcha"
-                type="text" 
-                inputMode="numeric"
-                value={answer} 
-                onChange={e => setAnswer(e.target.value)} 
-                placeholder="Your answer" 
-                required 
-                disabled={loadingChallenge}
-                autoComplete="off"
+            <label htmlFor="captcha">Solve this:</label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <canvas
+                ref={captchaCanvasRef}
+                width={200}
+                height={50}
+                role="img"
+                aria-label="Math challenge image"
+                style={{
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color, #ddd)',
+                  background: '#f8fafc',
+                  flexShrink: 0,
+                }}
               />
               <button 
                 type="button"
@@ -160,6 +210,19 @@ export default function AuthForm({ onLogin }) {
               >
                 <RefreshCw size={16} />
               </button>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+              <input 
+                id="captcha"
+                type="text" 
+                inputMode="numeric"
+                value={answer} 
+                onChange={e => setAnswer(e.target.value)} 
+                placeholder="Your answer" 
+                required 
+                disabled={loadingChallenge}
+                autoComplete="off"
+              />
             </div>
           </div>
           {error && <div className="auth-error" role="alert">⚠️ {error}</div>}
