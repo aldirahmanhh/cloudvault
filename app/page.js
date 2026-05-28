@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import {
   Search, HardDrive, Upload, Download, Trash2, X, ChevronLeft, ChevronRight,
@@ -13,6 +13,68 @@ import AuthForm from './components/AuthForm';
 import InstallBanner from './components/InstallBanner';
 
 const iconMap = { image: Image, video: Film, audio: Music, document: FileText, archive: Archive, code: Code, default: File };
+
+/**
+ * Memoized gallery item - prevents re-render on parent state change
+ */
+const FileGalleryItem = React.memo(({ file, onPreview }) => {
+  const cat = getFileCategory(file.mimeType);
+  const Icon = iconMap[cat] || File;
+  return (
+    <div key={file.id} className="gallery-item" onClick={() => onPreview(file)} tabIndex={0} onKeyDown={e => {if(e.key==='Enter'||e.key===' ') onPreview(file);}}>
+      <div className="gallery-thumb">
+        {cat === 'image' ? (
+          <img src={getDownloadUrl(file.id)} alt={file.name} loading="lazy" />
+        ) : cat === 'video' ? (
+          <div className="gallery-video-placeholder">
+            <div className="gallery-play"><Play size={18} /></div>
+          </div>
+        ) : (
+          <div className="gallery-thumb-icon"><Icon size={40} /></div>
+        )}
+      </div>
+      <span className={`gallery-badge storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'}</span>
+      <div className="gallery-info">
+        <div className="gallery-name" title={file.name}>{file.name}</div>
+        <div className="gallery-meta"><span>{formatFileSize(file.size)}</span><span>{timeAgo(file.createdAt)}</span></div>
+      </div>
+    </div>
+  );
+});
+FileGalleryItem.displayName = 'FileGalleryItem';
+
+/**
+ * Memoized list item - prevents re-render on parent state change
+ */
+const FileListItem = React.memo(({ file, onPreview, onDownload, onDelete }) => {
+  const cat = getFileCategory(file.mimeType);
+  const Icon = iconMap[cat] || File;
+  return (
+    <div key={file.id} className="file-item" onClick={() => onPreview(file)}>
+      <div className={`file-icon ${cat}`}><Icon size={18} /></div>
+      <div className="file-info">
+        <div className="file-name" title={file.name}>{file.name}</div>
+        <div className="file-meta">
+          <span>{formatFileSize(file.size)}</span>
+          <span className={`storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'} {file.storageType}</span>
+          <span>{timeAgo(file.createdAt)}</span>
+        </div>
+      </div>
+      <div className="file-actions" onClick={e => e.stopPropagation()}>
+        <button className="btn" onClick={() => onDownload(file)}><Download size={14} /><span>Download</span></button>
+        <button 
+          className="btn btn-danger btn-icon" 
+          onClick={() => onDelete(file)}
+          aria-label={`Delete ${file.name}`}
+          title="Delete file"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+});
+FileListItem.displayName = 'FileListItem';
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -148,7 +210,7 @@ function Dashboard({ user, onLogout }) {
     }
   };
 
-  const handleDownload = async (file) => {
+  const handleDownload = useCallback(async (file) => {
     setDownloading({ id: file.id, name: file.name, size: file.size, status: 'Connecting to server...', progress: 5, phase: 'connecting' });
     setPreviewFile(null);
 
@@ -213,7 +275,7 @@ function Dashboard({ user, onLogout }) {
       setDownloading(prev => ({ ...prev, status: `Failed: ${err.message}`, progress: 0, phase: 'error' }));
       toast.error(`Download failed: ${err.message}`);
     }
-  };
+  }, []);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -361,59 +423,21 @@ function Dashboard({ user, onLogout }) {
         </div>
       ) : viewMode === 'gallery' ? (
         <div className="file-gallery">
-          {files.map(file => {
-            const cat = getFileCategory(file.mimeType);
-            const Icon = iconMap[cat] || File;
-            return (
-              <div key={file.id} className="gallery-item" onClick={() => setPreviewFile(file)}>
-                <div className="gallery-thumb">
-                  {cat === 'image' ? (
-                    <img src={getDownloadUrl(file.id)} alt={file.name} loading="lazy" />
-                  ) : cat === 'video' ? (
-                    <><video src={getDownloadUrl(file.id)} preload="metadata" muted /><div className="gallery-play"><Play size={18} /></div></>
-                  ) : (
-                    <div className="gallery-thumb-icon"><Icon size={40} /></div>
-                  )}
-                </div>
-                <span className={`gallery-badge storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'}</span>
-                <div className="gallery-info">
-                  <div className="gallery-name" title={file.name}>{file.name}</div>
-                  <div className="gallery-meta"><span>{formatFileSize(file.size)}</span><span>{timeAgo(file.createdAt)}</span></div>
-                </div>
-              </div>
-            );
-          })}
+          {files.map(file => (
+            <FileGalleryItem key={file.id} file={file} onPreview={setPreviewFile} />
+          ))}
         </div>
       ) : (
         <div className="file-list">
-          {files.map(file => {
-            const cat = getFileCategory(file.mimeType);
-            const Icon = iconMap[cat] || File;
-            return (
-              <div key={file.id} className="file-item" onClick={() => setPreviewFile(file)}>
-                <div className={`file-icon ${cat}`}><Icon size={18} /></div>
-                <div className="file-info">
-                  <div className="file-name" title={file.name}>{file.name}</div>
-                  <div className="file-meta">
-                    <span>{formatFileSize(file.size)}</span>
-                    <span className={`storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'} {file.storageType}</span>
-                    <span>{timeAgo(file.createdAt)}</span>
-                  </div>
-                </div>
-                <div className="file-actions" onClick={e => e.stopPropagation()}>
-                  <button className="btn" onClick={() => handleDownload(file)}><Download size={14} /><span>Download</span></button>
-                  <button 
-                  className="btn btn-danger btn-icon" 
-                  onClick={() => setDeleteTarget(file)}
-                  aria-label={`Delete ${file.name}`}
-                  title="Delete file"
-                >
-                  <Trash2 size={14} />
-                </button>
-                </div>
-              </div>
-            );
-          })}
+          {files.map(file => (
+            <FileListItem 
+              key={file.id} 
+              file={file} 
+              onPreview={setPreviewFile}
+              onDownload={handleDownload}
+              onDelete={setDeleteTarget}
+            />
+          ))}
         </div>
       )}
 
@@ -452,9 +476,9 @@ function Dashboard({ user, onLogout }) {
               {getFileCategory(previewFile.mimeType) === 'image' ? (
                 <img src={getDownloadUrl(previewFile.id)} alt={previewFile.name} className="preview-image" />
               ) : getFileCategory(previewFile.mimeType) === 'video' ? (
-                <video controls className="preview-video"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /></video>
+                <video controls playsInline preload="metadata" className="preview-video"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /><track kind="captions" src="" /></video>
               ) : getFileCategory(previewFile.mimeType) === 'audio' ? (
-                <audio controls className="preview-audio"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /></audio>
+                <audio controls className="preview-audio"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /><track kind="captions" src="" /></audio>
               ) : (
                 <div className="preview-file-info">
                   <File size={64} style={{ color: 'var(--text-muted)' }} />
