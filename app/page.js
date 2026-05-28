@@ -50,17 +50,19 @@ const FileListItem = React.memo(({ file, onPreview, onDownload, onDelete }) => {
   const cat = getFileCategory(file.mimeType);
   const Icon = iconMap[cat] || File;
   return (
-    <div key={file.id} className="file-item" onClick={() => onPreview(file)}>
-      <div className={`file-icon ${cat}`}><Icon size={18} /></div>
-      <div className="file-info">
-        <div className="file-name" title={file.name}>{file.name}</div>
-        <div className="file-meta">
-          <span>{formatFileSize(file.size)}</span>
-          <span className={`storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'} {file.storageType}</span>
-          <span>{timeAgo(file.createdAt)}</span>
+    <div className="file-item">
+      <button type="button" className="file-main" onClick={() => onPreview(file)} aria-label={`Preview ${file.name}`}>
+        <div className={`file-icon ${cat}`}><Icon size={18} /></div>
+        <div className="file-info">
+          <div className="file-name" title={file.name}>{file.name}</div>
+          <div className="file-meta">
+            <span>{formatFileSize(file.size)}</span>
+            <span className={`storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'} {file.storageType}</span>
+            <span>{timeAgo(file.createdAt)}</span>
+          </div>
         </div>
-      </div>
-      <div className="file-actions" onClick={e => e.stopPropagation()}>
+      </button>
+      <div className="file-actions">
         <button className="btn" onClick={() => onDownload(file)}><Download size={14} /><span>Download</span></button>
         <button 
           className="btn btn-danger btn-icon" 
@@ -133,6 +135,14 @@ function Dashboard({ user, onLogout }) {
   const [isIOS, setIsIOS] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
   const [showQuickShareTooltip, setShowQuickShareTooltip] = useState(false);
+
+  useEffect(() => {
+    setPreviewFile(null);
+    setDeleteTarget(null);
+    setDownloading(null);
+    setUploadSuccess(null);
+    setShowQuickShareTooltip(false);
+  }, []);
 
   const fetchFiles = useCallback(async (page = 1, background = false) => {
     try {
