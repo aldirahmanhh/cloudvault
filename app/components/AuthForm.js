@@ -114,7 +114,7 @@ export default function AuthForm({ onLogin }) {
       const res = await fetch(mode === 'login' ? '/api/auth/login' : '/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, challengeToken, answer }),
+        body: JSON.stringify({ username, password, captchaToken: challengeToken, captchaAnswer: answer }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
