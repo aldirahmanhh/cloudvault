@@ -3,6 +3,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LogIn, UserPlus, Loader2, RefreshCw } from 'lucide-react';
 
+/**
+ * Convert math challenge string to screen-reader friendly text.
+ * "12 × 4" -> "12 times 4"
+ * @param {string} c
+ */
+function challengeToA11y(c) {
+  if (!c) return '';
+  return c
+    .replace(/\+/g, 'plus')
+    .replace(/-/g, 'minus')
+    .replace(/×/g, 'times');
+}
+
 export default function AuthForm({ onLogin }) {
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
@@ -119,11 +132,17 @@ export default function AuthForm({ onLogin }) {
             />
           </div>
           <div className="auth-field">
-            <label htmlFor="captcha">Solve this: {loadingChallenge ? '...' : challenge}</label>
+            <label htmlFor="captcha">
+              Solve this:{' '}
+              <span role="math" aria-label={loadingChallenge ? 'Loading challenge' : challengeToA11y(challenge)}>
+                {loadingChallenge ? '...' : challenge}
+              </span>
+            </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input 
                 id="captcha"
                 type="text" 
+                inputMode="numeric"
                 value={answer} 
                 onChange={e => setAnswer(e.target.value)} 
                 placeholder="Your answer" 
