@@ -2,6 +2,7 @@ import './globals.css';
 import Script from 'next/script';
 import ToastProvider from './components/ToastProvider';
 import ServiceWorker from './components/ServiceWorker';
+import { LanguageProvider } from '@/lib/i18n';
 import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
@@ -34,10 +35,9 @@ export const metadata = {
     telephone: false,
   },
   manifest: '/manifest.json',
-  themeColor: '#8b5cf6',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'CloudVault',
   },
   openGraph: {
@@ -88,7 +88,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#8b5cf6',
+  themeColor: '#a855f7',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -139,9 +139,11 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <ToastProvider />
-        <ServiceWorker />
-        {children}
+        <LanguageProvider>
+          <ToastProvider />
+          <ServiceWorker />
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

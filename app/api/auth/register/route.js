@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    const { username, password, captchaToken, captchaAnswer } = await request.json();
+    const { username, password, captchaToken, captchaAnswer, securityQuestions } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
@@ -50,7 +50,21 @@ export async function POST(request) {
       );
     }
 
-    const user = await registerUser(username.trim(), password);
+    // Validate optional security questions (if provided, require 2 with non-empty answers)
+    let sq = null;
+    if (Array.isArray(securityQuestions) && securityQuestions.length > 0) {
+      if (securityQuestions.length < 2) {
+        return NextResponse.json({ error: 'Minimal 2 security questions untuk password recovery' }, { status: 400 });
+      }
+      for (const q of securityQuestions) {
+        if (!q?.question || !q?.answer || String(q.answer).trim().length < 2) {
+          return NextResponse.json({ error: 'Setiap security question butuh jawaban minimal 2 karakter' }, { status: 400 });
+        }
+      }
+      sq = securityQuestions;
+    }
+
+    const user = await registerUser(username.trim(), password, sq);
     const token = await createToken(user);
 
     const response = NextResponse.json({ user, token });

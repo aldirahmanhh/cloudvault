@@ -65,6 +65,7 @@ export async function GET(request) {
         size: f.size,
         storageType: f.storageType,
         createdAt: f.createdAt,
+        hasThumbnail: !!f.thumbnail,
       })),
       pagination,
       stats: getStats(user.userId),

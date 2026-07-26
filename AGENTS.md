@@ -1,222 +1,140 @@
-# AGENTS.md — CloudVault v2.0 Development Guide
+# AGENTS.md — CloudVault v2.0
 
-## Project Overview
+Serverless cloud storage using Discord + Telegram as storage backends. No database.
 
-**CloudVault v2.0** — serverless cloud storage using Discord + Telegram as storage backends.
+## Stack
 
 - **Framework**: Next.js 14 (App Router), React 18
-- **Language**: JavaScript (no TypeScript)
-- **Auth**: jose (JWT) + bcryptjs, HTTP-only cookies
-- **Storage**: Discord API (files >50MB, chunked 4MB), Telegram Bot API (files ≤50MB)
+- **Language**: JavaScript only (no TypeScript, no `.ts`/`.tsx`)
+- **Auth**: `jose` (JWT) + `bcryptjs`, HTTP-only cookies
+- **Storage**: Discord API (files >50MB, chunked 4MB) + Telegram Bot API (files ≤50MB)
 - **Styling**: Plain CSS (globals.css + CSS modules, no Tailwind)
 - **Tests**: Vitest + jsdom + @testing-library/react
 - **Deploy**: Vercel Edge
 
-**Architecture**: No database. File metadata stored in Discord embeds. In-memory index in `lib/storage.js`. Upload routing threshold controlled by `FILE_SIZE_THRESHOLD` env var (default 50MB).
-
----
+**Architecture**: No DB. Metadata stored in Discord embeds. In-memory index in `lib/storage.js`. Routing threshold via `FILE_SIZE_THRESHOLD` env (default 50MB).
 
 ## Commands
 
-### Build
 ```bash
-npm run build        # Production build
-npm run dev          # Development server
-npm run start        # Production server
+# Build / Dev
+npm run dev          # dev server
+npm run build        # production build
+npm run start        # production server
+npm run lint         # ESLint (Next.js built-in)
+
+# Tests
+npm test                              # all tests
+npm run test:ui                       # Vitest UI
+npm run test:coverage                 # coverage report
+npx vitest tests/lib/storage.test.js  # single file
+npx vitest -t "test name pattern"     # single test by name
+npx vitest tests/lib/storage.test.js -t "name"  # file + filter
 ```
 
-### Test
-```bash
-npm test                          # Run all tests
-npm run test:ui                   # Vitest browser UI
-npm run test:coverage             # Coverage report
-
-# Single file:
-npx vitest tests/lib/storage.test.js
-
-# Single test case (by name pattern):
-npx vitest -t "test name pattern"
-
-# Single file + filter:
-npx vitest tests/lib/storage.test.js -t "test name"
-```
-
-### Lint
-```bash
-npm run lint         # ESLint via Next.js built-in
-```
-
----
-
-## Code Style Guidelines
-
-### Language
-- **JavaScript only** — no TypeScript. Do not introduce `.ts`/`.tsx` files.
-- Use JSDoc for documentation instead of type annotations.
+## Code Style
 
 ### Imports
 
-**Named imports** from packages:
+- **Named imports** from packages: `import { NextResponse } from 'next/server';`
+- **Namespace imports** for internal services: `import * as discord from '@/lib/discord';`
+- **Path alias** `@/` for cross-directory, `./` for same-directory relative
+- **Ordering**: external packages → internal `@/lib/*` → relative `./`
+
+### Naming
+
+- **SCREAMING_SNAKE_CASE** — module-level constants and env-derived values (`CHUNK_SIZE`, `FILE_SIZE_THRESHOLD`)
+- **camelCase** — variables, functions, parameters, object keys
+- **PascalCase** — React components only (`AuthForm`)
+
+### Functions
+
+- `async function` declarations for named lib functions and route handlers (`export async function GET(request)`)
+- Arrow functions for callbacks, event handlers, React component methods
+- Default parameters on signatures: `getFiles({ page = 1, limit = 20 } = {})`
+- Optional chaining used freely: `onProgress?.(0, msg)`, `request.cookies?.get('token')?.value`
+
+### JSDoc
+
+Required on all exported functions. Use `@param`, `@returns` with type in braces.
+
 ```js
-import { NextResponse } from 'next/server';
-import { SignJWT, jwtVerify } from 'jose';
-import { useState, useEffect, useCallback } from 'react';
+/**
+ * Rate limiter with sliding window
+ * @param {string} identifier - IP or username
+ * @param {number} maxRequests
+ * @returns {Object} { allowed, remaining, resetAt }
+ */
+export function checkRateLimit(identifier, maxRequests = 5, windowMs = 60000) { ... }
 ```
-
-**Namespace imports** for internal service modules:
-```js
-import * as discord from '@/lib/discord';
-import * as telegram from '@/lib/telegram';
-```
-
-**Path alias** `@/` for cross-directory, `./` for same-directory:
-```js
-import { getFiles, rebuildIndex } from '@/lib/storage';
-import { getUserFromRequest } from '@/lib/auth';
-import { formatFileSize } from './constants';  // same dir = relative
-```
-
-**Import ordering**: external packages → internal `@/lib/*` → relative `./`
-
-### Naming Conventions
-
-- **SCREAMING_SNAKE_CASE** — module-level constants and env-derived values:
-  ```js
-  const CHUNK_SIZE = 4 * 1024 * 1024;
-  const MAX_RETRIES = 3;
-  export const FILE_SIZE_THRESHOLD = 50 * 1024 * 1024;
-  ```
-
-- **camelCase** — variables, functions, parameters, object keys:
-  ```js
-  let fileCache = new Map();
-  async function ensurePolling() { ... }
-  export function checkRateLimit(identifier, maxRequests, windowMs) { ... }
-  ```
-
-- **PascalCase** — React components only:
-  ```js
-  export default function AuthForm({ onLogin }) { ... }
-  ```
 
 ### Error Handling
 
-**API routes** — always `try/catch`, return `NextResponse.json({ error: message }, { status: N })`:
+**API routes** — always `try/catch`, return `NextResponse.json({ error }, { status })`:
+
 ```js
 export async function GET(request) {
-  try {
-    // ...
-    return NextResponse.json({ ... });
-  } catch (error) {
+  try { /* ... */ return NextResponse.json({ ... }); }
+  catch (error) {
     console.error('GET /api/files error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 ```
 
-**Auth/validation errors** — throw `new Error('message')`, caller catches:
-```js
-if (existing) throw new Error('Username sudah dipakai');
-if (!valid) throw new Error('Password salah');
-```
+**Auth/validation** — throw `new Error('message')`, caller catches.
 
 **Non-critical failures** — silent catch with `console.warn`, never crash main flow:
+
 ```js
-try {
-  telegramBackup = await telegram.uploadFile(...);
-} catch (err) {
-  console.warn(`  ⚠️ Telegram backup failed: ${err.message}`);
-}
+try { telegramBackup = await telegram.uploadFile(...); }
+catch (err) { console.warn(`  ⚠️ Telegram backup failed: ${err.message}`); }
 ```
 
-**Client-side** — `try/catch` in event handlers, set error state:
-```js
-try {
-  const res = await fetch(...);
-  if (!res.ok) throw new Error(data.error || 'Failed');
-} catch (err) {
-  setError(err.message);
-} finally {
-  setLoading(false);
-}
-```
-
-### Function Style
-
-**`async function` declarations** for named lib functions and route handlers:
-```js
-export async function rebuildIndex() { ... }
-export async function GET(request) { ... }
-```
-
-**Arrow functions** for callbacks, event handlers, React component methods:
-```js
-const handleSubmit = async (e) => { ... };
-files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-```
-
-**Default parameters** on function signatures:
-```js
-export function getFiles({ page = 1, limit = 20, search = '', userId = null } = {}) { ... }
-```
-
-**Optional chaining** used freely:
-```js
-onProgress?.(0, `Preparing...`);
-request.cookies?.get('token')?.value;
-```
-
-### JSDoc
-
-Use JSDoc on all exported functions:
-```js
-/**
- * Rate limiter with sliding window
- * @param {string} identifier - IP address or username
- * @param {number} maxRequests - Max requests allowed
- * @param {number} windowMs - Time window in milliseconds
- * @returns {Object} { allowed: boolean, remaining: number, resetAt: number }
- */
-export function checkRateLimit(identifier, maxRequests = 5, windowMs = 60000) {
-```
+**Client-side** — `try/catch` in handlers, set error state, use `finally` for loading flag.
 
 ### File Organization
 
-**`lib/`** — server-side utilities, pure functions, no React. All named exports. Module-level state (Maps, booleans) for caching acceptable.
-
-**`app/api/*/route.js`** — Next.js App Router route handlers. Export named HTTP methods (`GET`, `POST`, `DELETE`). Always export `dynamic = 'force-dynamic'` at top. Auth check first, rate limit second, business logic third.
-
-**`app/components/`** — React components. Default export only. `'use client'` directive at top when needed.
-
-**`app/page.js`** — `'use client'`, default export for page, internal helper components defined in same file acceptable.
-
----
+- **`lib/`** — server-side utils, pure functions, no React. Named exports only. Module-level state (Maps, booleans) for caching acceptable.
+- **`app/api/*/route.js`** — route handlers. Export named HTTP methods (`GET`, `POST`, `DELETE`). Always `export const dynamic = 'force-dynamic'` at top. Order: auth check → rate limit → business logic.
+- **`app/components/`** — React components. Default export only. `'use client'` directive at top when needed.
+- **`app/page.js`** — `'use client'`, default export, internal helper components in same file acceptable.
 
 ## Architecture Notes
 
 ### Storage Routing
-- Files ≤ `FILE_SIZE_THRESHOLD` (default 50MB) → `lib/telegram.js`
-- Files > threshold → `lib/discord.js` with 4MB chunking
-- Metadata stored as Discord embeds (no database)
+- Files ≤ `FILE_SIZE_THRESHOLD` → `lib/telegram.js` (single upload)
+- Files > threshold → `lib/discord.js` (4MB chunks)
+- Metadata → Discord embeds (no DB)
 
-### Auth Flow
+### Auth
 - `lib/auth.js` — JWT sign/verify, bcrypt hash/compare
 - `lib/middleware.js` — auth guard for API routes
 - HTTP-only cookies for token storage
 
 ### Telegram Bot
-- Webhook mode: `app/api/webhook/telegram/route.js`
+- Webhook: `app/api/webhook/telegram/route.js`
 - Polling fallback: `lib/telegram-polling.js`
 
-### Vercel Config
-- Upload/download/webhook routes have 60s timeout via `vercel.json`
+### Vercel
+- Upload/download/webhook routes: 60s timeout via `vercel.json`
 
----
+## Hard Constraints
 
-## Key Constraints
+- **No TypeScript** — stay `.js`/`.jsx`. Never introduce `.ts`/`.tsx`.
+- **No database** — metadata lives in Discord embeds + in-memory `lib/storage.js` index.
+- **No type suppression** — no `@ts-ignore`, `@ts-expect-error`, `as any`.
+- **No empty catch blocks** — except truly ignorable errors (document why).
+- **Match existing patterns** — follow conventions above strictly. When in doubt, grep for similar code in `lib/` or `app/api/`.
+- **No new dependencies** without justification — prefer existing packages (`axios`, `jose`, `bcryptjs`, `uuid`, `form-data`).
 
-- **No TypeScript** — stay `.js`/`.jsx`
-- **No database** — metadata lives in Discord embeds, in-memory index in `lib/storage.js`
-- **No type suppression** — no `@ts-ignore`, `@ts-expect-error`, `as any`
-- **No empty catch blocks** — except for truly ignorable errors (document why)
-- **Match existing patterns** — follow conventions above strictly
+## Testing Notes
+
+- Tests in `tests/` mirror source structure (`tests/lib/storage.test.js` → `lib/storage.js`)
+- Vitest config uses jsdom for React component tests
+- Use `@testing-library/react` for component rendering, `@testing-library/jest-dom` for matchers
+- No mocks for Discord/Telegram in unit tests — mock at `fetch` level or extract pure functions
+
+## Cursor/Copilot Rules
+
+None present in repo (`.cursor/rules/`, `.cursorrules`, `.github/copilot-instructions.md` all absent).

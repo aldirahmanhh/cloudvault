@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cacheFile } from '@/lib/storage';
 import { getUserFromRequest } from '@/lib/auth';
+import * as discord from '@/lib/discord';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing file data' }, { status: 400 });
     }
 
+    const sortedChunks = chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+
     cacheFile({
       id: fileId,
       name: fileName,
@@ -23,9 +26,32 @@ export async function POST(request) {
       size: totalSize,
       storageType,
       userId: user.userId,
-      chunks: chunks.sort((a, b) => a.chunkIndex - b.chunkIndex),
+      chunks: sortedChunks,
       createdAt: new Date().toISOString(),
     });
+
+    // Store metadata in Discord for cold-instance recovery (multi-chunk files
+    // otherwise require reassembly from scan; a meta record makes them
+    // discoverable instantly on any serverless instance).
+    try {
+      const firstChunk = sortedChunks[0];
+      await discord.storeMetadata(
+        fileId,
+        fileName,
+        mimeType,
+        totalSize,
+        storageType,
+        {
+          messageId: firstChunk.messageId,
+          channelId: firstChunk.channelId,
+          chunkSize: firstChunk.chunkSize,
+          totalChunks: sortedChunks.length,
+        },
+        user.userId
+      );
+    } catch (err) {
+      console.warn(`  ⚠️ Metadata store failed: ${err.message}`);
+    }
 
     console.log(`✅ File complete: "${fileName}" (${chunks.length} chunks)`);
 

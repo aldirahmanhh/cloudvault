@@ -28,6 +28,7 @@
   --yellow: #fbbf24;
   --radius: 12px;
   --font: 'Space Grotesk', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
   --mono: 'JetBrains Mono', monospace;
 }
 
@@ -344,3 +345,39 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   .file-item { contain: layout style paint; }
   .preview-video { will-change: auto; }
 }
+
+/* ===== LANGUAGE SWITCHER ===== */
+.lang-switcher { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--surface); border: 1px solid #e5e5e5; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+.lang-switcher:hover { border-color: var(--accent); color: var(--accent); }
+.lang-switcher-select { border: 0; background: transparent; font: inherit; color: inherit; cursor: pointer; outline: none; padding-right: 2px; }
+
+/* ===== TRUST BADGES ===== */
+.trust-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding: 14px 16px; margin: 16px 0; background: var(--surface); border: 1px solid #e5e5e5; border-radius: var(--radius); }
+.trust-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.trust-badge svg { color: var(--success); flex-shrink: 0; }
+
+/* ===== SKELETON LOADING ===== */
+@keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.skeleton { background: linear-gradient(90deg, #ececec 0%, #f5f5f5 50%, #ececec 100%); background-size: 200% 100%; animation: skeleton-pulse 1.4s ease-in-out infinite; border-radius: 6px; }
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.skeleton-card { background: var(--surface); border: 1px solid #e5e5e5; border-radius: var(--radius); padding: 12px; }
+.skeleton-thumb { width: 100%; aspect-ratio: 4/3; margin-bottom: 10px; }
+.skeleton-line { height: 12px; margin-bottom: 6px; }
+.skeleton-line.short { width: 50%; }
+
+/* ===== FORGOT PASSWORD FLOW ===== */
+.auth-link-btn { background: none; border: 0; color: var(--accent); font-weight: 600; cursor: pointer; padding: 4px 0; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.auth-link-btn:hover { color: #7e22ce; }
+.auth-back-btn { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 12px; }
+.security-questions-section { margin-top: 16px; padding: 12px; background: var(--accent-bg); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 8px; }
+.security-questions-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.security-questions-hint { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+.security-question-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding: 10px; background: var(--surface); border: 1px solid #e5e5e5; border-radius: 6px; }
+.security-question-row select, .security-question-row input { width: 100%; padding: 8px 10px; border: 1px solid #e5e5e5; border-radius: 6px; font-family: var(--font); font-size: 13px; background: var(--surface); }
+.security-question-row select:focus, .security-question-row input:focus { border-color: var(--accent); outline: none; }
+.security-question-remove { align-self: flex-end; background: none; border: 0; color: var(--danger); font-size: 11px; font-weight: 600; cursor: pointer; padding: 2px 6px; }
+
+/* ===== GALLERY VIDEO THUMB (real image support) ===== */
+.gallery-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery-thumb-video-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.25); color: white; pointer-events: none; }
+.gallery-thumb { position: relative; }

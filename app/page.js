@@ -8,9 +8,11 @@ import {
   CheckCircle2, Loader2, LogOut, User, Grid, List, Play, RefreshCw,
   Heart, Trophy, Gift,
 } from 'lucide-react';
-import { uploadFile, getFiles, deleteFile, getDownloadUrl, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
+import { uploadFile, getFiles, deleteFile, getDownloadUrl, getThumbnailUrl, generateAndUploadVideoThumbnail, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
 import AuthForm from './components/AuthForm';
 import InstallBanner from './components/InstallBanner';
+import LanguageSwitcher from './components/LanguageSwitcher';
+import { useTranslation } from '@/lib/i18n';
 
 const iconMap = { image: Image, video: Film, audio: Music, document: FileText, archive: Archive, code: Code, default: File };
 
@@ -20,11 +22,20 @@ const iconMap = { image: Image, video: Film, audio: Music, document: FileText, a
 const FileGalleryItem = React.memo(({ file, onPreview }) => {
   const cat = getFileCategory(file.mimeType);
   const Icon = iconMap[cat] || File;
+  const showRealThumb = (cat === 'image') || (cat === 'video' && file.hasThumbnail);
+  const thumbSrc = cat === 'image' ? getDownloadUrl(file.id) : getThumbnailUrl(file.id);
   return (
     <div key={file.id} className="gallery-item" onClick={() => onPreview(file)} tabIndex={0} onKeyDown={e => {if(e.key==='Enter'||e.key===' ') onPreview(file);}}>
       <div className="gallery-thumb">
-        {cat === 'image' ? (
-          <img src={getDownloadUrl(file.id)} alt={file.name} loading="lazy" />
+        {showRealThumb ? (
+          <>
+            <img src={thumbSrc} alt={file.name} loading="lazy" className="gallery-thumb-img" />
+            {cat === 'video' && (
+              <div className="gallery-thumb-video-overlay">
+                <div className="gallery-play"><Play size={22} /></div>
+              </div>
+            )}
+          </>
         ) : cat === 'video' ? (
           <div className="gallery-video-placeholder">
             <div className="gallery-play"><Play size={18} /></div>
@@ -110,6 +121,7 @@ export default function Home() {
 }
 
 function Dashboard({ user, onLogout }) {
+  const { t } = useTranslation();
   const [files, setFiles] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [stats, setStats] = useState({ totalFiles: 0, totalSize: 0 });
@@ -142,6 +154,23 @@ function Dashboard({ user, onLogout }) {
     setDownloading(null);
     setUploadSuccess(null);
     setShowQuickShareTooltip(false);
+
+    // PWA shortcut: /?action=upload auto-opens file picker
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('action') === 'upload') {
+        setTimeout(() => {
+          const input = document.getElementById('file-input');
+          if (input) input.click();
+        }, 400);
+        // Clean the URL so refresh doesn't retrigger
+        try {
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch {
+          // Silently ignore history errors
+        }
+      }
+    }
   }, []);
 
   const fetchFiles = useCallback(async (page = 1, background = false) => {
@@ -155,7 +184,7 @@ function Dashboard({ user, onLogout }) {
       if (data.stats) setStats(data.stats);
     } catch (err) {
       console.error('Fetch error:', err);
-      toast.error('Gagal memuat file. Coba refresh halaman.');
+      toast.error(t('dashboard.loadFailed'));
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -197,6 +226,13 @@ function Dashboard({ user, onLogout }) {
 
       // Show success popup
       setUploadSuccess({ name: file.name, size: file.size, storageType: result.storageType });
+
+      // Fire-and-forget video thumbnail generation
+      if (file.type.startsWith('video/')) {
+        generateAndUploadVideoThumbnail(file, result.id)
+          .then((ok) => { if (ok) fetchFiles(1, true).catch(() => {}); })
+          .catch(() => {});
+      }
 
       fetchFiles(1, true).catch(() => {});
     } catch (err) {
@@ -294,9 +330,9 @@ function Dashboard({ user, onLogout }) {
       await deleteFile(deleteTarget.id);
       setFiles(prev => prev.filter(f => f.id !== deleteTarget.id));
       setStats(prev => ({ ...prev, totalFiles: prev.totalFiles - 1, totalSize: prev.totalSize - (deleteTarget.size || 0) }));
-      toast.success('Deleted!');
+      toast.success(t('dashboard.deleted'));
       setDeleteTarget(null);
-    } catch { toast.error('Delete failed'); }
+    } catch { toast.error(t('dashboard.deleteFailed')); }
     finally { setDeleting(false); }
   };
 
@@ -314,11 +350,12 @@ function Dashboard({ user, onLogout }) {
           </div>
         </div>
         <div className="header-right">
-          <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">Files</div></div>
-          <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">Used</div></div>
-          {syncing && <div className="sync-badge"><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Syncing</div>}
+          <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">{t('header.files')}</div></div>
+          <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">{t('header.used')}</div></div>
+          {syncing && <div className="sync-badge"><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> {t('header.syncing')}</div>}
+          <LanguageSwitcher />
           <div className="user-badge"><User size={14} /> {user.username}</div>
-          <button className="btn-logout" onClick={onLogout} title="Logout"><LogOut size={16} /></button>
+          <button className="btn-logout" onClick={onLogout} title={t('common.logout')} aria-label={t('common.logout')}><LogOut size={16} /></button>
         </div>
       </header>
 
@@ -578,18 +615,17 @@ function Dashboard({ user, onLogout }) {
             <div className="success-icon">
               <CheckCircle2 size={48} />
             </div>
-            <h3 className="modal-title" style={{ textAlign: 'center', marginBottom: 8 }}>Upload Berhasil! 🎉</h3>
+            <h3 className="modal-title" style={{ textAlign: 'center', marginBottom: 8 }}>{t('upload.successTitle')} 🎉</h3>
             <div className="success-details">
-              <div className="success-row"><span>File</span><strong>{uploadSuccess.name}</strong></div>
-              <div className="success-row"><span>Size</span><strong>{formatFileSize(uploadSuccess.size)}</strong></div>
-              <div className="success-row"><span>Storage</span><strong>🎮 Discord {uploadSuccess.size <= 50 * 1024 * 1024 ? '+ ✈️ Telegram' : ''}</strong></div>
+              <div className="success-row"><span>{t('upload.successFile')}</span><strong>{uploadSuccess.name}</strong></div>
+              <div className="success-row"><span>{t('upload.successSize')}</span><strong>{formatFileSize(uploadSuccess.size)}</strong></div>
+              <div className="success-row"><span>{t('upload.successStorage')}</span><strong>🎮 Discord {uploadSuccess.size <= 50 * 1024 * 1024 ? '+ ✈️ Telegram' : ''}</strong></div>
             </div>
             <div className="success-notice">
-              <p>⏱️ Dashboard akan otomatis sync setiap <strong>5 menit</strong>.</p>
-              <p>File sudah tersimpan dan bisa langsung didownload.</p>
+              <p>{t('upload.successNotice')}</p>
             </div>
             <button className="btn btn-primary" onClick={() => setUploadSuccess(null)} style={{ width: '100%', justifyContent: 'center', marginTop: 12, padding: 12 }}>
-              OK, Mengerti
+              {t('common.confirm')}
             </button>
           </div>
         </div>
@@ -598,16 +634,23 @@ function Dashboard({ user, onLogout }) {
       {/* Sync Info */}
       {files.length > 0 && (
         <div className="sync-info">
-          <p>💡 Dashboard sync setiap ~5 menit. File baru langsung muncul setelah upload.</p>
+          <p>💡 {t('dashboard.syncInfo')}</p>
         </div>
       )}
+
+      {/* Trust indicators */}
+      <div className="trust-strip">
+        <span className="trust-badge"><CheckCircle2 size={14} /> {t('trust.https')}</span>
+        <span className="trust-badge"><CheckCircle2 size={14} /> {t('trust.bcrypt')}</span>
+        <span className="trust-badge"><CheckCircle2 size={14} /> {t('trust.noTracking')}</span>
+      </div>
 
       {/* Donate + Leaderboard */}
       <DonateSection />
 
       {/* Footer */}
       <footer className="footer">
-        <span>CloudVault — Discord & Telegram Storage</span>
+        <span>CloudVault — {t('footer.tagline')}</span>
             <a href="https://teer.id/anrizz" target="_blank" rel="noopener" className="btn donate-btn trakteer"><Gift size={14} /> Support via Trakteer</a>
       </footer>
     </div>

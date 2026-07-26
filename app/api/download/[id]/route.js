@@ -61,12 +61,51 @@ export async function GET(request, { params }) {
     const mimeType = file.mimeType || 'application/octet-stream';
     const isPreviewable = mimeType.startsWith('image/') || mimeType.startsWith('video/') || mimeType.startsWith('audio/');
     const disposition = isPreviewable ? 'inline' : 'attachment';
+    const totalSize = buffer.length;
+    const safeName = encodeURIComponent(file.name);
+
+    // HTTP Range support — required for smooth video/audio seeking. Browser
+    // media element sends Range requests when scrubbing; without 206 replies
+    // it re-downloads the full file each time (visible as stutter).
+    const rangeHeader = request.headers.get('range');
+    if (rangeHeader) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+      if (match) {
+        let start = match[1] ? parseInt(match[1], 10) : 0;
+        let end = match[2] ? parseInt(match[2], 10) : totalSize - 1;
+
+        if (isNaN(start) || isNaN(end) || start > end || start >= totalSize) {
+          return new Response(null, {
+            status: 416,
+            headers: {
+              'Content-Range': `bytes */${totalSize}`,
+              'Accept-Ranges': 'bytes',
+            },
+          });
+        }
+        if (end >= totalSize) end = totalSize - 1;
+
+        const slice = buffer.subarray(start, end + 1);
+        return new Response(slice, {
+          status: 206,
+          headers: {
+            'Content-Type': mimeType,
+            'Content-Length': slice.length.toString(),
+            'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Disposition': `${disposition}; filename="${safeName}"`,
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      }
+    }
 
     return new Response(buffer, {
       headers: {
         'Content-Type': mimeType,
-        'Content-Length': buffer.length.toString(),
-        'Content-Disposition': `${disposition}; filename="${encodeURIComponent(file.name)}"`,
+        'Content-Length': totalSize.toString(),
+        'Accept-Ranges': 'bytes',
+        'Content-Disposition': `${disposition}; filename="${safeName}"`,
         'Cache-Control': 'public, max-age=3600',
       },
     });
