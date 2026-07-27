@@ -8,10 +8,13 @@ import {
   CheckCircle2, Loader2, LogOut, User, Grid, List, Play, RefreshCw,
   Heart, Trophy, Gift,
 } from 'lucide-react';
-import { uploadFile, getFiles, deleteFile, getDownloadUrl, getThumbnailUrl, generateAndUploadVideoThumbnail, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
+import { uploadFile, getFiles, deleteFile, getDownloadUrl, getThumbnailUrl, generateAndUploadVideoThumbnail, regenerateVideoThumbnail, formatFileSize, getFileCategory, timeAgo } from '@/lib/client-api';
+import { pushHistory } from '@/lib/upload-history';
 import AuthForm from './components/AuthForm';
 import InstallBanner from './components/InstallBanner';
 import LanguageSwitcher from './components/LanguageSwitcher';
+import ThemeToggle from './components/ThemeToggle';
+import UploadHistory from './components/UploadHistory';
 import { useTranslation } from '@/lib/i18n';
 
 const iconMap = { image: Image, video: Film, audio: Music, document: FileText, archive: Archive, code: Code, default: File };
@@ -19,7 +22,8 @@ const iconMap = { image: Image, video: Film, audio: Music, document: FileText, a
 /**
  * Memoized gallery item - prevents re-render on parent state change
  */
-const FileGalleryItem = React.memo(({ file, onPreview }) => {
+const FileGalleryItem = React.memo(({ file, onPreview, onRegenThumb, regenBusy }) => {
+  const { t } = useTranslation();
   const cat = getFileCategory(file.mimeType);
   const Icon = iconMap[cat] || File;
   const showRealThumb = (cat === 'image') || (cat === 'video' && file.hasThumbnail);
@@ -42,6 +46,17 @@ const FileGalleryItem = React.memo(({ file, onPreview }) => {
           </div>
         ) : (
           <div className="gallery-thumb-icon"><Icon size={40} /></div>
+        )}
+        {cat === 'video' && !file.hasThumbnail && onRegenThumb && (
+          <button
+            type="button"
+            className={`gallery-thumb-regen ${regenBusy ? 'busy' : ''}`}
+            disabled={regenBusy}
+            onClick={(e) => { e.stopPropagation(); onRegenThumb(file); }}
+          >
+            {regenBusy ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={11} />}
+            {regenBusy ? t('thumbnail.generating') : t('thumbnail.generate')}
+          </button>
         )}
       </div>
       <span className={`gallery-badge storage-badge ${file.storageType}`}>{file.storageType === 'discord' ? '🎮' : '✈️'}</span>
@@ -227,6 +242,9 @@ function Dashboard({ user, onLogout }) {
       // Show success popup
       setUploadSuccess({ name: file.name, size: file.size, storageType: result.storageType });
 
+      // History log: success
+      pushHistory({ name: file.name, size: file.size, mimeType: file.type, status: 'success', storageType: result.storageType });
+
       // Fire-and-forget video thumbnail generation
       if (file.type.startsWith('video/')) {
         generateAndUploadVideoThumbnail(file, result.id)
@@ -238,6 +256,8 @@ function Dashboard({ user, onLogout }) {
     } catch (err) {
       setStatusLog(prev => [...prev, { message: err.message, type: 'error' }]);
       toast.error(err.message);
+      // History log: failed
+      pushHistory({ name: file.name, size: file.size, mimeType: file.type, status: 'failed', error: err.message });
       setTimeout(() => { setUploading(false); uploadLock.current = false; }, 2000);
     }
     e.target.value = '';
@@ -255,6 +275,34 @@ function Dashboard({ user, onLogout }) {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }
   };
+
+  const [regenIds, setRegenIds] = useState(new Set());
+
+  const handleRegenThumb = useCallback(async (file) => {
+    if (regenIds.has(file.id)) return;
+    setRegenIds(prev => new Set(prev).add(file.id));
+    try {
+      const ok = await regenerateVideoThumbnail(file.id);
+      if (ok) {
+        toast.success(t('thumbnail.done'));
+        setFiles(prev => prev.map(f => f.id === file.id ? { ...f, hasThumbnail: true } : f));
+      } else {
+        toast.error(t('thumbnail.failed'));
+      }
+    } catch {
+      toast.error(t('thumbnail.failed'));
+    } finally {
+      setRegenIds(prev => { const n = new Set(prev); n.delete(file.id); return n; });
+    }
+  }, [regenIds, t]);
+
+  const handlePreview = useCallback((file) => {
+    setPreviewFile(file);
+    // Auto-generate missing video thumbnail on first preview (video already streams anyway)
+    if (getFileCategory(file.mimeType) === 'video' && !file.hasThumbnail && !regenIds.has(file.id)) {
+      handleRegenThumb(file);
+    }
+  }, [regenIds, handleRegenThumb]);
 
   const handleDownload = useCallback(async (file) => {
     setDownloading({ id: file.id, name: file.name, size: file.size, status: 'Connecting to server...', progress: 5, phase: 'connecting' });
@@ -353,6 +401,7 @@ function Dashboard({ user, onLogout }) {
           <div className="stat-item"><div className="stat-value">{stats.totalFiles}</div><div className="stat-label">{t('header.files')}</div></div>
           <div className="stat-item"><div className="stat-value">{formatFileSize(stats.totalSize)}</div><div className="stat-label">{t('header.used')}</div></div>
           {syncing && <div className="sync-badge"><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> {t('header.syncing')}</div>}
+          <ThemeToggle />
           <LanguageSwitcher />
           <div className="user-badge"><User size={14} /> {user.username}</div>
           <button className="btn-logout" onClick={onLogout} title={t('common.logout')} aria-label={t('common.logout')}><LogOut size={16} /></button>
@@ -426,11 +475,14 @@ function Dashboard({ user, onLogout }) {
         </div>
       )}
 
+      {/* Upload History */}
+      <UploadHistory />
+
       {/* Toolbar */}
       <div className="toolbar">
         <div className="search-box">
           <Search size={14} className="search-icon" />
-          <input placeholder="Search files..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder={t('dashboard.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="view-toggle">
           <button 
@@ -471,7 +523,7 @@ function Dashboard({ user, onLogout }) {
       ) : viewMode === 'gallery' ? (
         <div className="file-gallery">
           {files.map(file => (
-            <FileGalleryItem key={file.id} file={file} onPreview={setPreviewFile} />
+            <FileGalleryItem key={file.id} file={file} onPreview={handlePreview} onRegenThumb={handleRegenThumb} regenBusy={regenIds.has(file.id)} />
           ))}
         </div>
       ) : (
@@ -526,6 +578,19 @@ function Dashboard({ user, onLogout }) {
                 <video controls playsInline preload="metadata" className="preview-video"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /><track kind="captions" src="" /></video>
               ) : getFileCategory(previewFile.mimeType) === 'audio' ? (
                 <audio controls className="preview-audio"><source src={getDownloadUrl(previewFile.id)} type={previewFile.mimeType} /><track kind="captions" src="" /></audio>
+              ) : previewFile.mimeType === 'application/pdf' ? (
+                <div style={{ width: '100%' }}>
+                  <iframe
+                    src={`${getDownloadUrl(previewFile.id)}#toolbar=1`}
+                    title={previewFile.name}
+                    className="preview-pdf"
+                  />
+                  <p className="preview-pdf-fallback">
+                    <a href={getDownloadUrl(previewFile.id)} target="_blank" rel="noopener noreferrer" className="auth-link-btn">
+                      {t('preview.openExternal')}
+                    </a>
+                  </p>
+                </div>
               ) : (
                 <div className="preview-file-info">
                   <File size={64} style={{ color: 'var(--text-muted)' }} />

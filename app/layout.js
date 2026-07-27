@@ -3,7 +3,11 @@ import Script from 'next/script';
 import ToastProvider from './components/ToastProvider';
 import ServiceWorker from './components/ServiceWorker';
 import { LanguageProvider } from '@/lib/i18n';
+import { ThemeProvider } from '@/lib/theme';
 import { SITE_URL } from '@/lib/constants';
+
+// Injected inline to avoid FOUC when reading theme from localStorage/OS preference
+const themeInitScript = `(function(){try{var s=localStorage.getItem('cv-theme');var t=s==='dark'||s==='light'?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -133,17 +137,20 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="canonical" href={SITE_URL} />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
       <body>
-        <LanguageProvider>
-          <ToastProvider />
-          <ServiceWorker />
-          {children}
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <ToastProvider />
+            <ServiceWorker />
+            {children}
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
